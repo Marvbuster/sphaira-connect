@@ -6,3 +6,6 @@ DerivedData/
 SphairaCoreTests/.build/
 node_modules/
 .next/
+
+# Arbeitsmaterial, nie ins Repo (kann Bildschirmfotos mit Privatem enthalten)
+_raw/
