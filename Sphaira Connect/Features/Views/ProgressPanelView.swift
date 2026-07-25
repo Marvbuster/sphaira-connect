@@ -7,14 +7,39 @@ struct ProgressPanelView: View {
     var totalCount: Int
     var isFinished: Bool = false
 
+    // Die Balken zeigen immer den echten Stand. Sie im Abschlusszustand auf
+    // 100 % zu zwingen, hat einen randvollen Balken neben ehrlichen Zahlen
+    // wie „741,8 MB von 1,1 GB" erzeugt — die Anzeige log dann.
     private var overallFraction: Double {
         guard progress.overallTotal > 0 else { return 0 }
-        return isFinished ? 1 : min(1, Double(progress.overallSent) / Double(progress.overallTotal))
+        return min(1, Double(progress.overallSent) / Double(progress.overallTotal))
     }
 
     private var itemFraction: Double {
         guard progress.itemTotal > 0 else { return 0 }
-        return isFinished ? 1 : min(1, Double(progress.itemSent) / Double(progress.itemTotal))
+        return min(1, Double(progress.itemSent) / Double(progress.itemTotal))
+    }
+
+    /// Vollständig heißt: alle Bytes sind wirklich geflossen.
+    private var isComplete: Bool {
+        isFinished && progress.overallSent >= progress.overallTotal
+    }
+
+    private var headlineText: String {
+        guard isFinished else { return String(localized: "Übertragung läuft") }
+        return isComplete
+            ? String(localized: "Übertragung abgeschlossen")
+            : String(localized: "Übertragung unvollständig")
+    }
+
+    private var headlineSymbol: String {
+        guard isFinished else { return "arrow.down.circle" }
+        return isComplete ? "checkmark.circle.fill" : "exclamationmark.triangle.fill"
+    }
+
+    private var headlineTint: Color {
+        guard isFinished else { return .primary }
+        return isComplete ? Colors.success : Colors.warning
     }
 
     private var remainingText: String {
@@ -26,10 +51,9 @@ struct ProgressPanelView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
             HStack {
-                Label(isFinished ? "Übertragung abgeschlossen" : "Übertragung läuft",
-                      systemImage: isFinished ? "checkmark.circle.fill" : "arrow.down.circle")
+                Label(headlineText, systemImage: headlineSymbol)
                     .font(Fonts.subtitle)
-                    .foregroundStyle(isFinished ? Colors.success : .primary)
+                    .foregroundStyle(headlineTint)
                     .contentTransition(.symbolEffect(.replace))
                 Spacer()
                 Text("\(min(progress.itemIndex + 1, max(totalCount, 1))) von \(max(totalCount, 1))")

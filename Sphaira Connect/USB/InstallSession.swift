@@ -51,7 +51,7 @@ final class InstallSession: @unchecked Sendable {
         _ = try transport.readPacket(cancel: cancel)
         try transport.send(.ok, arg3: UInt32(tableBytes.count), arg4: 0, cancel: cancel)
         try transport.write(tableBytes, cancel: cancel)
-        onLog("Namensliste mit \(items.count) Einträgen gesendet.")
+        onLog(String(localized: "Namensliste mit \(items.count) Einträgen gesendet."))
 
         let overallTotal = items.reduce(Int64(0)) { $0 + $1.byteCount }
         var completedBytes: Int64 = 0
@@ -62,7 +62,7 @@ final class InstallSession: @unchecked Sendable {
             switch packet.command {
             case SphairaCommand.quit.rawValue:
                 try transport.send(.ok, arg3: 0, arg4: 0, cancel: cancel)
-                onLog("Switch hat die Sitzung beendet.")
+                onLog(String(localized: "Switch hat die Sitzung beendet."))
                 return
 
             case SphairaCommand.open.rawValue:
@@ -71,7 +71,7 @@ final class InstallSession: @unchecked Sendable {
                     try transport.send(.error, arg3: 0, arg4: 0, cancel: cancel)
                     throw InstallError.fileUnreadable(
                         path: "#\(index)",
-                        reason: "Dateiindex außerhalb der Liste"
+                        reason: String(localized: "Dateiindex außerhalb der Liste")
                     )
                 }
                 let transferred = try transferFile(
@@ -115,12 +115,12 @@ final class InstallSession: @unchecked Sendable {
     ) throws -> Bool {
         let item = items[index]
         onItemState(index, .transferring)
-        onLog("Übertrage \(item.displayName) …")
+        onLog(String(localized: "Übertrage \(item.displayName) …"))
 
         func reportFailure(_ reason: String) throws {
             try transport.send(.error, arg3: 0, arg4: 0, cancel: cancel)
             onItemState(index, .failed(reason))
-            onLog("Fehler bei \(item.displayName): \(reason)")
+            onLog(String(localized: "Fehler bei \(item.displayName): \(reason)"))
         }
 
         let file: FileHandle
@@ -188,8 +188,24 @@ final class InstallSession: @unchecked Sendable {
         }
 
         emitProgress(force: true)
+
+        // Sphaira schließt die Datei nach wenigen Kilobyte auch dann, wenn es sie
+        // überspringt (bereits installiert) oder verwirft (ungültiger Kopfsatz).
+        // Beide Fälle sind auf dem Draht nicht unterscheidbar — also melden wir
+        // den Sachverhalt und nicht eine geratene Ursache.
+        guard tracker.sentBytes >= Int64(size) else {
+            let reason = String(
+                localized: "übersprungen — Switch hat nur \(ByteFormat.size(tracker.sentBytes)) von \(ByteFormat.size(Int64(size))) angefordert"
+            )
+            onItemState(index, .skipped(reason))
+            onLog(String(
+                localized: "\(item.displayName): \(reason). Meist ist der Titel schon installiert; sonst hat Sphaira die Datei verworfen."
+            ))
+            return false
+        }
+
         onItemState(index, .done)
-        onLog("\(item.displayName) fertig übertragen.")
+        onLog(String(localized: "\(item.displayName) fertig übertragen."))
         return true
     }
 }

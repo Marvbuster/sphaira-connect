@@ -4,6 +4,13 @@ nonisolated enum ByteFormat {
     private static let dash = "–"
     private static let units = ["B", "kB", "MB", "GB", "TB", "PB"]
 
+    /// Folgt der eingestellten Sprache: Komma im Deutschen, Punkt im Englischen.
+    /// Bewusst bei jedem Aufruf gelesen, damit ein Sprachwechsel sofort greift —
+    /// die Anzeige aktualisiert ohnehin nur etwa zehnmal pro Sekunde.
+    static var decimalSeparator: String {
+        Locale.current.decimalSeparator ?? "."
+    }
+
     static func size(_ bytes: Int64) -> String {
         guard bytes >= 0 else { return dash }
         return scaled(Double(bytes))
@@ -36,9 +43,9 @@ nonisolated enum ByteFormat {
         if unitIndex == 0 {
             return "\(Int(value)) B"
         }
-        // Deutsches Zahlenformat mit genau einer Nachkommastelle, ohne NumberFormatter
-        // (der ist nicht threadsicher und die Aufrufer sind nonisolated).
+        // Genau eine Nachkommastelle, ohne NumberFormatter (der ist nicht
+        // threadsicher und die Aufrufer sind nonisolated).
         let tenths = Int((value * 10).rounded())
-        return "\(tenths / 10),\(tenths % 10) \(units[unitIndex])"
+        return "\(tenths / 10)\(decimalSeparator)\(tenths % 10) \(units[unitIndex])"
     }
 }

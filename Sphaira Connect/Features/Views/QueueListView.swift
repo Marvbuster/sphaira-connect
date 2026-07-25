@@ -70,6 +70,11 @@ private struct QueueRow: View {
                         .font(.caption2)
                         .foregroundStyle(Colors.danger)
                         .lineLimit(1)
+                } else if case .skipped(let reason) = item.state {
+                    Text(reason)
+                        .font(.caption2)
+                        .foregroundStyle(Colors.warning)
+                        .lineLimit(1)
                 }
             }
 
@@ -114,6 +119,9 @@ private struct QueueRow: View {
         case .done:
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(Colors.success)
+        case .skipped:
+            Image(systemName: "arrow.turn.down.right")
+                .foregroundStyle(Colors.warning)
         case .failed:
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(Colors.danger)
@@ -122,10 +130,11 @@ private struct QueueRow: View {
 
     private var stateDescription: String {
         switch item.state {
-        case .queued: "wartet"
-        case .transferring: "wird übertragen"
-        case .done: "fertig"
-        case .failed(let reason): "fehlgeschlagen: \(reason)"
+        case .queued: String(localized: "wartet")
+        case .transferring: String(localized: "wird übertragen")
+        case .done: String(localized: "fertig")
+        case .skipped(let reason): String(localized: "übersprungen: \(reason)")
+        case .failed(let reason): String(localized: "fehlgeschlagen: \(reason)")
         }
     }
 }

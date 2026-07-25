@@ -112,7 +112,7 @@ final class InstallerModel {
         }
         guard !fresh.isEmpty else { return }
         items.append(contentsOf: fresh)
-        appendLog("\(fresh.count) Datei(en) zur Warteschlange hinzugefügt.")
+        appendLog(String(localized: "\(fresh.count) Datei(en) zur Warteschlange hinzugefügt."))
     }
 
     func remove(_ item: InstallItem) {
@@ -138,7 +138,7 @@ final class InstallerModel {
         progress = nil
         deviceSummary = nil
         phase = .waitingForSwitch
-        appendLog("Warte auf die Switch — Sphaira auf der Konsole öffnen (USB-Installation).")
+        appendLog(String(localized: "Warte auf die Switch — Sphaira auf der Konsole öffnen (USB-Installation)."))
 
         let flag = CancelFlag()
         cancelFlag = flag
@@ -161,7 +161,7 @@ final class InstallerModel {
             guard let self, self.isBusy else { return }
             self.progress = nil
             self.phase = .idle
-            self.appendLog("Sitzung ohne Abschlussmeldung beendet.")
+            self.appendLog(String(localized: "Sitzung ohne Abschlussmeldung beendet."))
         }
 
         // Die Sitzung selbst hält keine Referenz auf das Modell — sie schreibt
@@ -200,7 +200,7 @@ final class InstallerModel {
             phase = .transferring
             // info.product enthält bereits „Nintendo Switch" — den Hersteller
             // davorzusetzen ergäbe „Nintendo Nintendo Switch".
-            appendLog("Verbunden: \(info.product) (Seriennummer \(info.serial))")
+            appendLog(String(localized: "Verbunden: \(info.product) (Seriennummer \(info.serial))"))
 
         case .progress(let value):
             progress = value
@@ -212,24 +212,24 @@ final class InstallerModel {
 
         case .finished(let transferred):
             phase = .finished(transferred: transferred)
-            appendLog("Fertig — \(transferred) Datei(en) übertragen.")
+            appendLog(String(localized: "Fertig — \(transferred) Datei(en) übertragen."))
 
         case .cancelled:
             progress = nil
             phase = .idle
-            appendLog("Übertragung abgebrochen.")
+            appendLog(String(localized: "Übertragung abgebrochen."))
 
         case .failed(let message):
             progress = nil
             phase = .failed(message)
-            appendLog("Fehler: \(message)")
+            appendLog(String(localized: "Fehler: \(message)"))
         }
     }
 
     func cancel() {
         guard isBusy else { return }
         cancelFlag?.set()
-        appendLog("Abbruch angefordert …")
+        appendLog(String(localized: "Abbruch angefordert …"))
     }
 
     // MARK: - Geräteüberwachung
@@ -246,7 +246,9 @@ final class InstallerModel {
                 guard !Task.isCancelled else { break }
                 if switchAttached != attached {
                     switchAttached = attached
-                    appendLog(attached ? "Switch erkannt." : "Switch getrennt.")
+                    appendLog(attached
+                              ? String(localized: "Switch erkannt.")
+                              : String(localized: "Switch getrennt."))
                 }
                 do {
                     try await Task.sleep(for: .seconds(2))

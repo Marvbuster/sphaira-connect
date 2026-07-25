@@ -11,7 +11,7 @@ import Foundation
 ///
 /// Bewusst ohne Zeit- und USB-Abhängigkeit: Der Zeitstempel wird hereingereicht,
 /// damit sich das Verhalten deterministisch prüfen lässt.
-struct ProgressTracker {
+nonisolated struct ProgressTracker {
     /// Mindestabstand zwischen zwei Aktualisierungen der Oberfläche.
     static let emitIntervalNanos: UInt64 = 100_000_000
     /// Gewicht des neuen Messwerts bei der Durchsatzglättung (0…1).

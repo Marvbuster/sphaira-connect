@@ -5,6 +5,12 @@ nonisolated struct InstallItem: Identifiable, Equatable, Sendable {
         case queued
         case transferring
         case done
+        /// Die Switch hat die Datei nach wenigen Bytes geschlossen. Ob sie den
+        /// Titel übersprungen hat (bereits installiert) oder verworfen (etwa
+        /// wegen ungültigem Kopfsatz), geht aus dem Protokoll NICHT hervor —
+        /// beide Fälle sehen auf dem Draht identisch aus. Deshalb ein eigener,
+        /// neutraler Zustand statt eines Fehlers.
+        case skipped(String)
         case failed(String)
     }
 

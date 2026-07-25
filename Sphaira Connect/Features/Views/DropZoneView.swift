@@ -83,8 +83,8 @@ struct DropZoneView: View {
         panel.canChooseFiles = true
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = true
-        panel.prompt = "Hinzufügen"
-        panel.message = "Titel oder Ordner auswählen"
+        panel.prompt = String(localized: "Hinzufügen")
+        panel.message = String(localized: "Titel oder Ordner auswählen")
         if panel.runModal() == .OK {
             onURLs(panel.urls)
         }

@@ -86,11 +86,12 @@
 				};
 			};
 			buildConfigurationList = 00A048C130155B7C00A8B128 /* Build configuration list for PBXProject "Sphaira Connect" */;
-			developmentRegion = en;
+			developmentRegion = de;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
+				de,
 			);
 			mainGroup = 00A048BD30155B7C00A8B128;
 			minimizedProjectReferenceProxies = 1;

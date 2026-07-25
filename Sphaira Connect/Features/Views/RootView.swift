@@ -111,7 +111,7 @@ struct RootView: View {
             statusFootnote
             Spacer()
 
-            GlassButton("Liste leeren", systemImage: "trash",
+            GlassButton(String(localized: "Liste leeren"), systemImage: "trash",
                         kind: .clear, size: .standard,
                         isEnabled: !model.items.isEmpty && !model.isBusy) {
                 withAnimation(.snappy(duration: 0.35)) { model.clearAll() }
@@ -119,7 +119,7 @@ struct RootView: View {
             .accessibilityLabel("Warteschlange leeren")
 
             if model.isBusy {
-                GlassButton("Abbrechen", systemImage: "xmark.circle",
+                GlassButton(String(localized: "Abbrechen"), systemImage: "xmark.circle",
                             kind: .red, size: .standard) {
                     model.cancel()
                 }
@@ -127,7 +127,7 @@ struct RootView: View {
                 .accessibilityLabel("Übertragung abbrechen")
             }
 
-            GlassButton("Installieren", systemImage: "arrow.down.circle.fill",
+            GlassButton(String(localized: "Installieren"), systemImage: "arrow.down.circle.fill",
                         kind: .green, size: .standard,
                         isEnabled: model.canStart) {
                 model.start()

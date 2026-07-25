@@ -11,7 +11,7 @@ struct StatusPill: View {
 
     private var text: String {
         if let deviceSummary, attached { return deviceSummary }
-        return attached ? "Switch verbunden" : "Keine Switch"
+        return attached ? String(localized: "Switch verbunden") : String(localized: "Keine Switch")
     }
 
     var body: some View {

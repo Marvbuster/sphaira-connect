@@ -14,23 +14,23 @@ nonisolated enum InstallError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .switchNotFound:
-            return "Keine Switch gefunden. Ist Sphaira im USB-Modus gestartet?"
+            return String(localized: "Keine Switch gefunden. Ist Sphaira im USB-Modus gestartet?")
         case .accessDenied:
-            return "Zugriff auf das USB-Gerät verweigert. Bitte Berechtigungen prüfen."
+            return String(localized: "Zugriff auf das USB-Gerät verweigert. Bitte Berechtigungen prüfen.")
         case let .usb(operation, code):
-            return "USB-Fehler bei „\(operation)“ (Code \(code))."
+            return String(localized: "USB-Fehler bei „\(operation)“ (Code \(code)).")
         case let .shortPacket(expected, got):
-            return "Paket zu kurz: \(expected) Bytes erwartet, \(got) erhalten."
+            return String(localized: "Paket zu kurz: \(expected) Bytes erwartet, \(got) erhalten.")
         case .badMagic:
-            return "Ungültige Paketkennung — Antwort stammt nicht von Sphaira."
+            return String(localized: "Ungültige Paketkennung — Antwort stammt nicht von Sphaira.")
         case .checksumMismatch:
-            return "Prüfsummenfehler im empfangenen Paket."
+            return String(localized: "Prüfsummenfehler im empfangenen Paket.")
         case let .unexpectedCommand(command):
-            return "Unerwarteter Befehl von der Switch: \(command)."
+            return String(localized: "Unerwarteter Befehl von der Switch: \(command).")
         case let .fileUnreadable(path, reason):
-            return "Datei nicht lesbar: \(path) (\(reason))."
+            return String(localized: "Datei nicht lesbar: \(path) (\(reason)).")
         case .cancelled:
-            return "Übertragung abgebrochen."
+            return String(localized: "Übertragung abgebrochen.")
         }
     }
 }
