@@ -1,0 +1,8 @@
+.DS_Store
+*.xcuserdatad/
+xcuserdata/
+DerivedData/
+.build/
+SphairaCoreTests/.build/
+node_modules/
+.next/

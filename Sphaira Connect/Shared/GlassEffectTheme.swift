@@ -1,0 +1,43 @@
+import SwiftUI
+import AppKit
+
+// Liquid-Glass-Kartenhintergrund (natives glassEffect, macOS 26+)
+struct GlassBackground: View {
+    var cornerRadius: CGFloat = 14
+    var tint: Color = Colors.backgroundTint
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(.clear)
+            .glassEffect(glass, in: .rect(cornerRadius: cornerRadius))
+    }
+
+    private var glass: Glass {
+        tint == .clear ? .regular : .regular.tint(tint)
+    }
+}
+
+// Unschärfe hinter dem Fenster — glassEffect kann den Schreibtisch
+// hinter dem Fenster nicht abtasten, NSVisualEffectView schon.
+struct VisualEffectBlur: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.blendingMode = .behindWindow
+        view.state = .active
+        view.material = .underWindowBackground
+        return view
+    }
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
+}
+
+extension View {
+    // Gruppierung ohne Glaseffekt für Bereiche, die selbst Glaselemente
+    // enthalten (Glas in Glas wird nicht unterstützt und rendert unscharf)
+    func connectCard(radius: CGFloat = 14, tint: Color = Colors.backgroundTint) -> some View {
+        background(
+            RoundedRectangle(cornerRadius: radius, style: .continuous)
+                .fill(tint)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
+        )
+    }
+}
