@@ -68,7 +68,7 @@ let package = Package(
 Ausgeführt wird mit:
 
 ```bash
-cd "<project>/SphairaCoreTests" && swift test
+cd SphairaCoreTests && swift test
 ```
 
 ## Warum ein Symlink und kein Xcode-Testziel

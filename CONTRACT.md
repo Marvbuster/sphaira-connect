@@ -1,5 +1,8 @@
 # Sphaira Connect — verbindlicher Schnittstellenvertrag
 
+> Dieses Dokument war die Bauvorgabe und beschreibt die Modulgrenzen. Die
+> laufend gepflegte Beschreibung des Systems steht im `.wiki/`.
+
 Alle Module werden gegen **exakt** diese Signaturen gebaut. Keine Abweichung, keine
 Umbenennung, keine zusätzlichen Pflichtparameter. Wer etwas vermisst, ergänzt es
 **additiv** (neue Methode), ohne Bestehendes zu ändern.
@@ -96,6 +99,7 @@ struct InstallItem: Identifiable, Equatable, Sendable {
         case queued
         case transferring
         case done
+        case skipped(String)   // Switch hat die Datei nach wenigen Bytes geschlossen
         case failed(String)
     }
 
@@ -202,7 +206,8 @@ final class InstallSession: @unchecked Sendable {
      - sonst: an Offset springen, `dataSize` Bytes lesen,
        `send(.ok, arg3: UInt32(gelesen), arg4: CRC32C.checksum(gelesen))`,
        danach `write(daten)`
-   - Fortschritt: Hochwassermarke `max(bisher, offset + gelesen)`,
+   - Fortschritt: Summe der tatsächlich gesendeten Bytes, geklemmt auf die
+     Dateigröße — NICHT die höchste angefragte Position (siehe ProgressTracker),
      `onProgress` höchstens alle 100 ms
 
 `onItemState` meldet `.transferring` beim Start und `.done` am Ende einer Datei.
@@ -212,7 +217,7 @@ Abbruch wirft `InstallError.cancelled`. `close()` gehört in ein `defer`.
 
 ## 3. Designsystem — `Sphaira Connect/Shared/`
 
-Stilvorlage ist NovaTimePuncher unter `<reference-project>/NovaTimePuncher/Shared/`.
+Stilvorlage ist NovaTimePuncher unter `<workspace>/NovaTimePuncher/NovaTimePuncher/Shared/`.
 Übernommen wird die Machart, **nicht** die Fachlichkeit.
 
 ### DesignTokens.swift
