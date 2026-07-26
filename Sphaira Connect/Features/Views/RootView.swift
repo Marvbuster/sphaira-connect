@@ -3,17 +3,9 @@ import SwiftUI
 /// Main view: background with a state-dependent colour wash, header in the title
 /// bar zone, drop zone or queue, progress, log, actions.
 struct RootView: View {
-    private enum Mode: String, CaseIterable, Identifiable {
-        case install
-        case rcm
-
-        var id: Self { self }
-    }
-
     @State private var model = InstallerModel()
     @State private var rcmModel = RCMInjectorModel()
-    @State private var mode: Mode = .install
-    @Namespace private var modeSelection
+    @State private var mode: RootViewMode = .install
 
     private var backgroundTint: Color {
         if mode == .rcm {
@@ -40,6 +32,21 @@ struct RootView: View {
         case .transferring, .finished: model.progress != nil
         default: false
         }
+    }
+
+    /// `nil` — nothing running, badge hidden. `.nan` — running but the rate
+    /// isn't known yet, `ByteFormat.duration` renders that as an en dash so
+    /// the badge itself does not flicker in and out while idle moments pass.
+    private var activeRemainingSeconds: Double? {
+        if mode == .install, model.phase == .transferring, let progress = model.progress {
+            guard progress.bytesPerSecond > 0 else { return .nan }
+            return Double(progress.overallTotal - progress.overallSent) / progress.bytesPerSecond
+        }
+        if mode == .rcm, rcmModel.phase == .injecting {
+            guard rcmModel.bytesPerSecond > 0 else { return .nan }
+            return Double(rcmModel.totalBytes - rcmModel.sentBytes) / rcmModel.bytesPerSecond
+        }
+        return nil
     }
 
     private var sizeKey: String {
@@ -84,6 +91,13 @@ struct RootView: View {
                 .padding(.trailing, 14)
                 .offset(y: -24)
         }
+        .overlay(alignment: .top) {
+            if let seconds = activeRemainingSeconds {
+                CountdownBadgeView(remainingSeconds: seconds)
+                    .padding(.top, 34)
+            }
+        }
+        .animation(.snappy(duration: 0.3), value: activeRemainingSeconds)
         .frame(minWidth: 560)
         .onAppear { startSelectedMonitor() }
         .onDisappear {
@@ -99,7 +113,7 @@ struct RootView: View {
 
     private var content: some View {
         VStack(spacing: Spacing.lg) {
-            modeSelector
+            ModeSwitcherView(mode: $mode, isDisabled: model.isBusy || rcmModel.isBusy)
 
             if mode == .install {
                 installerContent
@@ -112,74 +126,6 @@ struct RootView: View {
         .animation(.snappy(duration: 0.35), value: showsProgress)
         .animation(.easeInOut(duration: 0.25), value: model.phase)
         .animation(.easeInOut(duration: 0.25), value: rcmModel.phase)
-    }
-
-    private var modeSelector: some View {
-        VStack(alignment: .leading, spacing: Spacing.sm) {
-            Label("Modus", systemImage: "rectangle.2.swap")
-                .font(Fonts.helper)
-                .foregroundStyle(.secondary)
-
-            HStack(spacing: Spacing.xs) {
-                modeButton(
-                    .install,
-                    title: String(localized: "Sphaira-Installation"),
-                    systemImage: "shippingbox"
-                )
-                modeButton(
-                    .rcm,
-                    title: String(localized: "RCM-Payload"),
-                    systemImage: "bolt.horizontal"
-                )
-            }
-            .padding(4)
-            .background(GlassBackground(cornerRadius: 14, tint: .clear))
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
-                    .allowsHitTesting(false)
-            }
-        }
-        .disabled(model.isBusy || rcmModel.isBusy)
-        .opacity(model.isBusy || rcmModel.isBusy ? 0.55 : 1)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Arbeitsmodus")
-    }
-
-    private func modeButton(
-        _ target: Mode,
-        title: String,
-        systemImage: String
-    ) -> some View {
-        let isSelected = mode == target
-
-        return Button {
-            withAnimation(.snappy(duration: 0.28)) {
-                mode = target
-            }
-        } label: {
-            Label(title, systemImage: systemImage)
-                .font(.system(size: 13, weight: isSelected ? .semibold : .medium))
-                .foregroundStyle(isSelected ? Color.primary : Color.secondary)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, Spacing.md)
-                .padding(.vertical, 8)
-                .background {
-                    if isSelected {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(Colors.accent.opacity(0.18))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .strokeBorder(Colors.accent.opacity(0.42), lineWidth: 1)
-                            }
-                            .matchedGeometryEffect(id: "mode-selection", in: modeSelection)
-                    }
-                }
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .glassInteractive(radius: 10)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     @ViewBuilder

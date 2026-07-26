@@ -8,6 +8,7 @@ status: current
 related:
   - protocol/install-session-flow
   - protocol/sph0-wire-protocol
+  - protocol/rcm-payload-injection
   - architecture/system-overview
   - architecture/queue-and-file-scanning
   - ui/window-and-views
@@ -16,6 +17,8 @@ related:
 code_refs:
   - Sphaira Connect/Core/ProgressTracker.swift
   - Sphaira Connect/USB/InstallSession.swift
+  - Sphaira Connect/Features/RCMInjectorModel.swift
+  - Sphaira Connect/Features/Views/CountdownBadgeView.swift
   - SphairaCoreTests/Tests/SphairaCoreTests/ProgressTrackerTests.swift
 ---
 
@@ -204,6 +207,29 @@ file), both clamped to 1 and pinned to 1 when `isFinished`, plus the remaining t
 `(overallTotal − overallSent) / bytesPerSecond`. If the throughput is 0 or the transfer is done,
 `.nan` is deliberately handed to `ByteFormat.duration` and turns into an en dash — see
 [[architecture/queue-and-file-scanning]].
+
+## Reused for RCM injection
+
+`RCMInjectorModel.inject()` ([[protocol/rcm-payload-injection]]) feeds the exact same
+`ProgressTracker` from `RCMTransport`'s cumulative `(sent, total)` callback — one packet write per
+call, so the delta against the previous call is the chunk:
+
+```swift
+var tracker = ProgressTracker(totalBytes: Int64(transmitted), startNanos: DispatchTime.now().uptimeNanoseconds)
+var lastSent = 0
+onProgress: { sent, total in
+    tracker.record(chunkSize: sent - lastSent)
+    lastSent = sent
+    if tracker.tick(now: DispatchTime.now().uptimeNanoseconds) {
+        continuation.yield(.progress(sent: sent, total: total, bytesPerSecond: tracker.bytesPerSecond))
+    }
+}
+```
+
+RCM payloads are typically small (Hekate is around 110 KB) and often transfer inside a single
+100 ms throttle window, so `bytesPerSecond` can stay at `0` for the whole injection — the
+[[ui/window-and-views]] countdown badge treats that the same way as an install session between
+throughput samples: visible, showing an en dash, not hidden.
 
 ## One known loose end
 

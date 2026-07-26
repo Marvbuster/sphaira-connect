@@ -1,7 +1,7 @@
 # Sphaira Connect — Wiki Index
 
 > Auto-maintained. Regenerate with `/wiki-index` (or `wiki ls sphaira-connect`).
-> **Last updated:** 2026-07-26 | **Articles:** 13 (planned) | **Archived:** 0 | **App:** v1.1 (Build 1)
+> **Last updated:** 2026-07-26 | **Articles:** 13 (planned) | **Archived:** 0 | **App:** v1.2 (Build 1)
 
 ---
 
@@ -42,4 +42,4 @@
 - **Language:** English
 - **Conventions:** kebab-case file names, mandatory frontmatter, Mermaid preferred
 - **Contract:** `CONTRACT.md` — binding for all signatures and the session flow
-- **Build:** MARKETING_VERSION 1.1 · CURRENT_PROJECT_VERSION 1 · macOS 26.5
+- **Build:** MARKETING_VERSION 1.2 · CURRENT_PROJECT_VERSION 1 · macOS 26.5

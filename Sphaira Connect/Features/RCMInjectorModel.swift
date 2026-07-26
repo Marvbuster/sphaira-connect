@@ -29,7 +29,7 @@ enum RCMPayloadPreset: String, CaseIterable, Identifiable {
 fileprivate enum RCMEvent: Sendable {
     case prepared(imageBytes: Int, transmittedBytes: Int)
     case deviceID(String)
-    case progress(sent: Int, total: Int)
+    case progress(sent: Int, total: Int, bytesPerSecond: Double)
     case succeeded
     case failed(String)
 }
@@ -49,6 +49,7 @@ final class RCMInjectorModel {
     var phase: Phase = .idle
     var sentBytes = 0
     var totalBytes = 0
+    var bytesPerSecond: Double = 0
     var rcmAttached = false
     var deviceID: String?
     var log: [AppLogLine] = []
@@ -250,6 +251,7 @@ final class RCMInjectorModel {
         phase = .preparing
         sentBytes = 0
         totalBytes = 0
+        bytesPerSecond = 0
         deviceID = nil
         appendLog(String(localized: "Bereite \(payloadURL.lastPathComponent) vor …"))
 
@@ -272,10 +274,24 @@ final class RCMInjectorModel {
                 let transmitted = RCMPayloadBuilder.transmittedByteCount(imageByteCount: image.count)
                 continuation.yield(.prepared(imageBytes: image.count, transmittedBytes: transmitted))
 
+                // Same tracker-based rate smoothing as InstallSession, fed from
+                // RCMTransport's cumulative (sent, total) callback rather than a
+                // per-chunk one — the delta against the previous call is the chunk.
+                var tracker = ProgressTracker(
+                    totalBytes: Int64(transmitted),
+                    startNanos: DispatchTime.now().uptimeNanoseconds
+                )
+                var lastSent = 0
                 try RCMTransport().inject(
                     image: image,
                     onDeviceID: { continuation.yield(.deviceID($0)) },
-                    onProgress: { continuation.yield(.progress(sent: $0, total: $1)) }
+                    onProgress: { sent, total in
+                        tracker.record(chunkSize: sent - lastSent)
+                        lastSent = sent
+                        if tracker.tick(now: DispatchTime.now().uptimeNanoseconds) {
+                            continuation.yield(.progress(sent: sent, total: total, bytesPerSecond: tracker.bytesPerSecond))
+                        }
+                    }
                 )
                 continuation.yield(.succeeded)
             } catch {
@@ -294,11 +310,13 @@ final class RCMInjectorModel {
         case let .deviceID(id):
             deviceID = id
             appendLog(String(localized: "RCM-Switch verbunden · Geräte-ID \(id)"))
-        case let .progress(sent, total):
+        case let .progress(sent, total, rate):
             sentBytes = sent
             totalBytes = total
+            bytesPerSecond = rate
         case .succeeded:
             sentBytes = totalBytes
+            bytesPerSecond = 0
             phase = .succeeded
             appendLog(String(localized: "Payload injiziert — die Switch startet sie jetzt."))
         case let .failed(message):

@@ -18,6 +18,8 @@ code_refs:
   - Sphaira Connect/Features/Views/QueueListView.swift
   - Sphaira Connect/Features/Views/ProgressPanelView.swift
   - Sphaira Connect/Features/Views/LogConsoleView.swift
+  - Sphaira Connect/Features/Views/ModeSwitcherView.swift
+  - Sphaira Connect/Features/Views/CountdownBadgeView.swift
 ---
 
 # Window and Views
@@ -50,11 +52,19 @@ Four layers from bottom to top: desktop blur, state color, content, window confi
 
 `WindowStyleConfigurator` sits in the stack as a 0×0 view with hit testing switched off. That is the usual way to reach the surrounding `NSWindow` from SwiftUI without changing the view hierarchy.
 
-The state color comes from a single computed property:
+The state color comes from a single computed property — since v1.1 it switches on whichever of the
+two modes ([[architecture/system-overview]]) is currently selected:
 
 ```swift
 private var backgroundTint: Color {
-    switch model.phase {
+    if mode == .rcm {
+        switch rcmModel.phase {
+        case .preparing, .injecting: return Colors.backgroundTintActive
+        case .failed: return Colors.backgroundTintError
+        case .idle, .succeeded: return Colors.backgroundTint
+        }
+    }
+    return switch model.phase {
     case .transferring, .waitingForSwitch: Colors.backgroundTintActive
     case .failed: Colors.backgroundTintError
     case .idle, .finished: Colors.backgroundTint
@@ -62,11 +72,16 @@ private var backgroundTint: Color {
 }
 ```
 
-Note that `.finished` gets the calm blue back, not the green. The green signals **activity**, not success — for success there is the footnote in the action bar and the green check mark in the progress panel. `.waitingForSwitch` shares its color with `.transferring`, because from the user's point of view the waiting is already part of the running transfer.
+Note that `.finished`/`.succeeded` get the calm blue back, not the green. The green signals
+**activity**, not success — for success there is the footnote in the action bar and the green check
+mark in the progress panel. `.waitingForSwitch` shares its color with `.transferring`, because from
+the user's point of view the waiting is already part of the running transfer.
 
-## Header and status indicator as overlays
+## Header, status indicator and countdown as overlays
 
-Because the title bar is transparent and the content reaches up underneath it, the title and the status indicator do not live in the content stack but as overlays with a negative offset in the title-bar zone:
+Because the title bar is transparent and the content reaches up underneath it, the title, the
+status indicator and (since v1.2) the remaining-time countdown do not live in the content stack but
+as overlays with a negative offset in the title-bar zone:
 
 ```swift
 .overlay(alignment: .topLeading) {
@@ -79,25 +94,41 @@ Because the title bar is transparent and the content reaches up underneath it, t
         .accessibilityHidden(true)
 }
 .overlay(alignment: .topTrailing) {
-    StatusPill(attached: model.switchAttached, deviceSummary: model.deviceSummary)
+    StatusPill(
+        attached: mode == .install ? model.switchAttached : rcmModel.rcmAttached,
+        deviceSummary: mode == .install ? model.deviceSummary : (rcmModel.rcmAttached ? "Switch · RCM" : nil)
+    )
         .padding(.trailing, 14)
         .offset(y: -24)
 }
+.overlay(alignment: .top) {
+    if let seconds = activeRemainingSeconds {
+        CountdownBadgeView(remainingSeconds: seconds)
+            .padding(.top, 34)
+    }
+}
+.animation(.snappy(duration: 0.3), value: activeRemainingSeconds)
 ```
 
 The `padding(.leading, 80)` keeps clear of the traffic-light buttons, which `WindowStyleConfigurator` deliberately leaves visible. The title is `accessibilityHidden` — it is decoration, and the window name is in the window list anyway.
 
 `StatusPill` shows a dot plus text and switches with an animation (`.easeInOut(duration: 0.35)`) between green (connected, with a glow via `shadow`) and translucent white (not connected). The text has three tiers: the device summary from the running session, otherwise "Switch verbunden", otherwise "Keine Switch". For assistive technology, `accessibilityLabel("Verbindungsstatus: \(text)")` combines both.
 
+`activeRemainingSeconds` is `nil` while nothing is running (the badge is absent entirely), `.nan`
+while running but the throughput isn't known yet (`ByteFormat.duration` renders that as an en dash,
+so the badge doesn't flicker in and out during that brief window), and the actual remaining-seconds
+estimate otherwise — computed from whichever mode's model is currently active. See
+[[protocol/progress-tracking]] for where the RCM side of that estimate comes from.
+
 ## The sizeKey
 
 ```swift
 private var sizeKey: String {
-    "\(model.items.count)-\(showsProgress)-\(model.isLogExpanded)-\(model.isBusy)"
+    "\(mode.rawValue)-\(model.items.count)-\(showsProgress)-\(model.isLogExpanded)-\(model.isBusy)-\(rcmModel.isLogExpanded)-\(rcmModel.isBusy)"
 }
 ```
 
-This is the trigger for resizing the window: exactly the four states that change the height of the content. The string itself is meaningless — only its **change** counts. Deliberately not included are progress values, log lines and phase changes without layout consequences; otherwise the window would try to re-measure itself several times per second during a transfer.
+This is the trigger for resizing the window: exactly the states that change the height of the content, across both modes. The string itself is meaningless — only its **change** counts. Deliberately not included are progress values, log lines and phase changes without layout consequences; otherwise the window would try to re-measure itself several times per second during a transfer.
 
 ## The content and its transitions
 
@@ -285,3 +316,22 @@ Auto-scrolling hangs off the line count, not the content:
 ```
 
 In addition, `onAppear` jumps to the end — otherwise the log would sit at the top when expanded, even though the interesting lines are at the bottom. The empty state has its own branch ("Noch keine Einträge.") so that the card does not appear as a blank area.
+
+### ModeSwitcherView
+
+Extracted out of `RootView` to keep it under the 400-line limit from `CONTRACT.md`. A two-button
+segmented switch (`RootViewMode.install`/`.rcm`) with a `matchedGeometryEffect` highlight that
+slides between them on `.snappy(duration: 0.28)`. Disabled and dimmed to 0.55 opacity while either
+model reports `isBusy`, so the mode cannot change mid-transfer.
+
+### CountdownBadgeView
+
+Also extracted to stay under the line limit once it was added in v1.2. A presentational view: it
+takes a plain `remainingSeconds: Double` (visibility is the caller's job, see the overlay above) and
+renders it large (`size: 34, weight: .bold, design: .rounded`), with `.monospacedDigit()` so the
+digits don't jitter horizontally and `.contentTransition(.numericText(countsDown: true))` for the
+native SwiftUI "counting down" digit animation. `RootView` ties everything together with a single
+`.animation(.snappy(duration: 0.3), value: activeRemainingSeconds)` — since that value changes on
+every throttled progress tick, the whole badge (appearing, disappearing, and each digit update)
+animates smoothly without any explicit `withAnimation` at the call sites that mutate the underlying
+model state.

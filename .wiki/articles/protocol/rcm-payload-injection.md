@@ -10,6 +10,8 @@ related:
   - architecture/system-overview
   - operations/build-configuration
   - operations/testing-strategy
+  - protocol/progress-tracking
+  - ui/window-and-views
 code_refs:
   - Sphaira Connect/Core/RCMPayload.swift
   - Sphaira Connect/Core/RCMTriggerOutcome.swift
@@ -127,5 +129,9 @@ manually. It never calls `inject()`.
 `Phase` enum (`idle`/`preparing`/`injecting`/`succeeded`/`failed`), and its own 2-second
 `isRCMAttached()` polling loop — independent of `InstallerModel.startMonitoring()`, since the two
 modes watch for different USB devices. `RootView` switches between the Sphaira-installer and the
-RCM view with a segmented mode picker, stopping and restarting whichever monitor is no longer
-active.
+RCM view with a segmented mode picker ([[ui/window-and-views]], `ModeSwitcherView`), stopping and
+restarting whichever monitor is no longer active.
+
+Since v1.2, `.progress` also carries a `bytesPerSecond` — the `.injecting` phase feeds the same
+`Core/ProgressTracker` the installer uses into the large remaining-time countdown at the top of the
+window (see [[protocol/progress-tracking]] for how, [[ui/window-and-views]] for the badge itself).

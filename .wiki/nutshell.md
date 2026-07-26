@@ -13,19 +13,19 @@ tech_stack:
   - xcode
   - cryptokit
 versions:
-  app: "1.1"
+  app: "1.2"
   build: 1
   macos_min: "26.5"
   swift_language_mode: "5"
 size:
-  files: 44
-  prod_files: 34
+  files: 46
+  prod_files: 36
   test_files: 10
-  loc: 4354
-  prod_loc: 3568
+  loc: 4434
+  prod_loc: 3648
   test_loc: 786
   languages:
-    swift: 4354
+    swift: 4434
 deployment:
   platform: macos
   notes: "Xcode build, statically linked libusb, sandbox off, Hardened Runtime on"
@@ -40,7 +40,9 @@ files (`nsp`, `xci`, `nsz`, `xcz`) over USB to the homebrew app **Sphaira**. It 
 script `usb_install.py` — at its core the app is a reimplementation of that script's USB protocol,
 wrapped in a user interface with a drop zone, a queue, progress reporting and a log console. Since
 v1.1 it also has a second, independent mode: manual RCM payload injection (Fusée Gelée) for
-unpatched Switch consoles, with optional official Hekate/Fusée downloads from GitHub.
+unpatched Switch consoles, with optional official Hekate/Fusée downloads from GitHub. Since v1.2 a
+large remaining-time countdown appears at the top of the window while either mode is actively
+running.
 
 ## Structure
 
