@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-26 | **Status:** Done | **Minimum macOS:** 26.5
 **MARKETING_VERSION:** 1.2 | **CURRENT_PROJECT_VERSION:** 1
-**Commit:** `PENDING` — *large remaining-time countdown, extracted view files*
+**Commit:** `fc1ba26` — *large remaining-time countdown, extracted view files*
 
 ## Summary
 
