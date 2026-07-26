@@ -73,7 +73,8 @@ libusb is linked statically, so the finished app does **not** need Homebrew.
 
 ## Preparing the Switch
 
-Without these three steps nothing happens, and no host app can do them for you:
+These three steps happen **inside Sphaira, on the console itself** — no host app,
+including this one, can do them for you:
 
 1. Enable **Options → Install Options → "Enable sysmmc"**. Installing is switched
    **off by default** in Sphaira. This is by far the most common reason people see

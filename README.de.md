@@ -70,7 +70,8 @@ fertige App zu benutzen.
 
 ## Auf der Switch vorbereiten
 
-Ohne diese drei Schritte passiert nichts, und die App kann das nicht für dich tun:
+Diese drei Schritte passieren **in Sphaira, auf der Konsole selbst** — keine
+Host-App, auch diese hier nicht, kann sie für dich übernehmen:
 
 1. **Optionen → Install Options → „Enable sysmmc"** einschalten. Installieren ist in
    Sphaira ab Werk deaktiviert — das ist die häufigste Ursache dafür, dass scheinbar
