@@ -185,6 +185,10 @@ Four points that are not obvious:
    CRC32C of the block in `arg4`. The Switch then knows how many bytes are about to arrive and can
    verify them. A `read` that returns `nil` is answered as an empty block — `arg3 = 0`,
    `arg4 = CRC32C([]) = 0` — instead of running into an error.
+5. **The completion check allows a small shortfall.** `tracker.sentBytes` must reach `size -
+   completionTolerance` (4096 bytes), not exactly `size` — NSP/XCI container padding at the end of
+   the last entry is never explicitly requested. Details and the field case that caused this in
+   [[operations/troubleshooting]], case 10.
 
 ## 5. When a file fails
 

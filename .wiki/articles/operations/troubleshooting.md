@@ -15,6 +15,7 @@ related:
   - ui/window-and-views
 code_refs:
   - Sphaira Connect/USB/USBTransport.swift
+  - Sphaira Connect/USB/InstallSession.swift
   - Sphaira Connect/Features/InstallerModel.swift
   - Sphaira Connect/Core/ProgressTracker.swift
   - Sphaira Connect/Shared/WindowStyleConfigurator.swift
@@ -241,6 +242,42 @@ Part of the behaviour on a file error is also (see [[protocol/install-session-fl
 
 ---
 
+## 10. A successful install reported as "skipped"
+
+**Symptom.** The console visibly installs a title in full — no error on screen, size looks right —
+yet Sphaira Connect reports it as skipped: "the Switch requested only 4.3 GB of 4.3 GB." Both
+numbers round to the same display value, so the message reads as nonsensical.
+
+**Cause.** The completion check compared the raw byte sum against the file size with no tolerance:
+`tracker.sentBytes >= Int64(size)`. NSP/XCI containers pad their last entry to an alignment
+boundary — a handful of trailing bytes that carry no content and that Sphaira correctly never
+requests, because it already knows from the container header that there is nothing left to read.
+`ByteFormat.size` rounds to one decimal place, so a shortfall of a few hundred bytes to a few
+kilobytes on a multi-gigabyte file is invisible in the displayed numbers even though the raw
+comparison still fails.
+
+**Fix.** A small, explicitly named tolerance absorbs exactly that trailing padding without masking
+a genuine skip (which the field case that motivated this looked like — a title short by roughly a
+gigabyte, several orders of magnitude larger):
+
+```swift
+/// NSP/XCI containers pad their last entry to an alignment boundary that
+/// the Switch never explicitly requests — a handful of trailing bytes it
+/// already knows are not content. Within this margin, a transfer still
+/// counts as complete instead of being reported as skipped.
+private nonisolated static let completionTolerance: Int64 = 4096
+
+guard tracker.sentBytes >= Int64(size) - Self.completionTolerance else {
+    // ... skipped ...
+}
+```
+
+**Rule of thumb.** A shortfall of a few KB on a multi-GB file is container padding; a shortfall of
+tens or hundreds of MB (or more) is a genuine skip — already-installed or rejected. 4096 bytes
+comfortably covers known PFS0/HFS0 entry alignment while staying negligible next to either case.
+
+---
+
 ## Quick diagnosis
 
 | Observation | First place to look |
@@ -253,3 +290,4 @@ Part of the behaviour on a file error is also (see [[protocol/install-session-fl
 | Window too large at launch | Case 7 — frame persistence |
 | Cancellation reacts sluggishly | Case 8 — flag cadence, not a bug |
 | Bar runs ahead of reality | Case 9 — failed file counted |
+| A visibly successful install reported as "skipped" | Case 10 — completion tolerance |

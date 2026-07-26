@@ -19,6 +19,12 @@ nonisolated struct TransferProgress: Equatable, Sendable {
 }
 
 final class InstallSession: @unchecked Sendable {
+    /// NSP/XCI containers pad their last entry to an alignment boundary that
+    /// the Switch never explicitly requests — a handful of trailing bytes it
+    /// already knows are not content. Within this margin, a transfer still
+    /// counts as complete instead of being reported as skipped.
+    private nonisolated static let completionTolerance: Int64 = 4096
+
     private nonisolated let items: [InstallItem]
     private nonisolated let transport: USBTransport
 
@@ -192,8 +198,9 @@ final class InstallSession: @unchecked Sendable {
         // Sphaira also closes the file after a few kilobytes when it skips the
         // title (already installed) or rejects it (invalid header). The two cases
         // are indistinguishable on the wire — so we report the observed facts
-        // rather than a guessed cause.
-        guard tracker.sentBytes >= Int64(size) else {
+        // rather than a guessed cause. A shortfall within completionTolerance is
+        // container padding, not a skip: the install still succeeded.
+        guard tracker.sentBytes >= Int64(size) - Self.completionTolerance else {
             let reason = String(
                 localized: "übersprungen — Switch hat nur \(ByteFormat.size(tracker.sentBytes)) von \(ByteFormat.size(Int64(size))) angefordert"
             )
