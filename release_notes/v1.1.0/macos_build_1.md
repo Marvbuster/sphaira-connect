@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-26 | **Status:** Done | **Minimum macOS:** 26.5
 **MARKETING_VERSION:** 1.1 | **CURRENT_PROJECT_VERSION:** 1
-**Commit:** `PENDING` — *RCM payload injection, official Hekate/Fusée presets*
+**Commit:** `370aada` — *RCM payload injection, official Hekate/Fusée presets*
 
 ## Summary
 
