@@ -20,7 +20,6 @@ struct CountdownBadgeView: View {
         }
         .padding(.horizontal, Spacing.lg)
         .padding(.vertical, Spacing.sm)
-        .transition(.opacity.combined(with: .move(edge: .top)).combined(with: .scale(scale: 0.92)))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Verbleibende Zeit: \(ByteFormat.duration(remainingSeconds))")
     }

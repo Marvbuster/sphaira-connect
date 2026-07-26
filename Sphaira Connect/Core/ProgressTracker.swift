@@ -21,6 +21,11 @@ nonisolated struct ProgressTracker {
 
     private(set) var sentBytes: Int64 = 0
     private(set) var bytesPerSecond: Double = 0
+    /// How many times `tick` has actually emitted. The first sample fully
+    /// overwrites `bytesPerSecond` with no smoothing — callers that display a
+    /// derived estimate (e.g. remaining time) can use this to withhold it
+    /// until a few samples have smoothed away that initial noise.
+    private(set) var tickCount: Int = 0
 
     private var lastEmitNanos: UInt64
     private var lastEmitBytes: Int64 = 0
@@ -67,6 +72,7 @@ nonisolated struct ProgressTracker {
 
         lastEmitNanos = now
         lastEmitBytes = sentBytes
+        tickCount += 1
         return true
     }
 }

@@ -29,7 +29,7 @@ enum RCMPayloadPreset: String, CaseIterable, Identifiable {
 fileprivate enum RCMEvent: Sendable {
     case prepared(imageBytes: Int, transmittedBytes: Int)
     case deviceID(String)
-    case progress(sent: Int, total: Int, bytesPerSecond: Double)
+    case progress(sent: Int, total: Int, bytesPerSecond: Double, sampleCount: Int)
     case succeeded
     case failed(String)
 }
@@ -50,6 +50,7 @@ final class RCMInjectorModel {
     var sentBytes = 0
     var totalBytes = 0
     var bytesPerSecond: Double = 0
+    var sampleCount = 0
     var rcmAttached = false
     var deviceID: String?
     var log: [AppLogLine] = []
@@ -252,6 +253,7 @@ final class RCMInjectorModel {
         sentBytes = 0
         totalBytes = 0
         bytesPerSecond = 0
+        sampleCount = 0
         deviceID = nil
         appendLog(String(localized: "Bereite \(payloadURL.lastPathComponent) vor …"))
 
@@ -289,7 +291,12 @@ final class RCMInjectorModel {
                         tracker.record(chunkSize: sent - lastSent)
                         lastSent = sent
                         if tracker.tick(now: DispatchTime.now().uptimeNanoseconds) {
-                            continuation.yield(.progress(sent: sent, total: total, bytesPerSecond: tracker.bytesPerSecond))
+                            continuation.yield(.progress(
+                                sent: sent,
+                                total: total,
+                                bytesPerSecond: tracker.bytesPerSecond,
+                                sampleCount: tracker.tickCount
+                            ))
                         }
                     }
                 )
@@ -310,10 +317,11 @@ final class RCMInjectorModel {
         case let .deviceID(id):
             deviceID = id
             appendLog(String(localized: "RCM-Switch verbunden · Geräte-ID \(id)"))
-        case let .progress(sent, total, rate):
+        case let .progress(sent, total, rate, samples):
             sentBytes = sent
             totalBytes = total
             bytesPerSecond = rate
+            sampleCount = samples
         case .succeeded:
             sentBytes = totalBytes
             bytesPerSecond = 0

@@ -1,6 +1,16 @@
 {
   "sourceLanguage" : "de",
   "strings" : {
+    ".bin hier ablegen oder zum Auswählen klicken" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drop a .bin here or click to choose"
+          }
+        }
+      }
+    },
     "%@ (Neueste)" : {
       "localizations" : {
         "en" : {
@@ -75,18 +85,12 @@
         }
       }
     },
-    "%@%@" : {
+    "%@-Preset" : {
       "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@%@"
-          }
-        },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@%@"
+            "value" : "%@ preset"
           }
         }
       }
@@ -107,16 +111,6 @@
         }
       }
     },
-    "%@-Preset" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ preset"
-          }
-        }
-      }
-    },
     "%@: %@. Meist ist der Titel schon installiert; sonst hat Sphaira die Datei verworfen." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -130,6 +124,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@: %@. Usually the title is already installed; otherwise Sphaira rejected the file."
+          }
+        }
+      }
+    },
+    "%@%@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@%@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@%@"
           }
         }
       }
@@ -194,16 +204,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld of %lld"
-          }
-        }
-      }
-    },
-    ".bin hier ablegen oder zum Auswählen klicken" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Drop a .bin here or click to choose"
           }
         }
       }
@@ -364,6 +364,36 @@
         }
       }
     },
+    "Die geladene Fusée-Payload ist ungültig." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The downloaded Fusée payload is invalid."
+          }
+        }
+      }
+    },
+    "Die geladene Hekate-Payload ist ungültig." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The downloaded Hekate payload is invalid."
+          }
+        }
+      }
+    },
+    "Die neueste Hekate-Release enthält keine Standard-Payload." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The latest Hekate release does not contain a standard payload."
+          }
+        }
+      }
+    },
     "Die Payload-Datei ist leer." : {
       "localizations" : {
         "en" : {
@@ -424,36 +454,6 @@
         }
       }
     },
-    "Die geladene Fusée-Payload ist ungültig." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The downloaded Fusée payload is invalid."
-          }
-        }
-      }
-    },
-    "Die geladene Hekate-Payload ist ungültig." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The downloaded Hekate payload is invalid."
-          }
-        }
-      }
-    },
-    "Die neueste Hekate-Release enthält keine Standard-Payload." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The latest Hekate release does not contain a standard payload."
-          }
-        }
-      }
-    },
     "Exploit auslösen" : {
       "localizations" : {
         "en" : {
@@ -492,6 +492,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Error: %@"
+          }
+        }
+      }
+    },
+    "fehlgeschlagen: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "fehlgeschlagen: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "failed: %@"
+          }
+        }
+      }
+    },
+    "fertig" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "fertig"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "done"
           }
         }
       }
@@ -794,22 +826,6 @@
         }
       }
     },
-    "NSP, XCI, NSZ oder XCZ hier ablegen" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "NSP, XCI, NSZ oder XCZ hier ablegen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Drop NSP, XCI, NSZ, or XCZ here"
-          }
-        }
-      }
-    },
     "Namensliste mit %lld Einträgen gesendet." : {
       "localizations" : {
         "de" : {
@@ -865,6 +881,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Not configured"
+          }
+        }
+      }
+    },
+    "NSP, XCI, NSZ oder XCZ hier ablegen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NSP, XCI, NSZ oder XCZ hier ablegen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drop NSP, XCI, NSZ, or XCZ here"
           }
         }
       }
@@ -975,22 +1007,22 @@
         }
       }
     },
-    "Payload wird vorbereitet …" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Preparing payload …"
-          }
-        }
-      }
-    },
     "Payload wird übertragen …" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Transferring payload …"
+          }
+        }
+      }
+    },
+    "Payload wird vorbereitet …" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparing payload …"
           }
         }
       }
@@ -1021,36 +1053,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Payload Presets"
-          }
-        }
-      }
-    },
-    "Preset einrichten" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Set Up Preset"
-          }
-        }
-      }
-    },
-    "Preset entfernen" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Remove Preset"
-          }
-        }
-      }
-    },
-    "Preset speichern" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Save Preset"
           }
         }
       }
@@ -1091,12 +1093,32 @@
         }
       }
     },
-    "Preset-Datei fehlt: %@" : {
+    "Preset einrichten" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Preset file is missing: %@"
+            "value" : "Set Up Preset"
+          }
+        }
+      }
+    },
+    "Preset entfernen" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove Preset"
+          }
+        }
+      }
+    },
+    "Preset speichern" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save Preset"
           }
         }
       }
@@ -1107,6 +1129,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Change Preset File"
+          }
+        }
+      }
+    },
+    "Preset-Datei fehlt: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preset file is missing: %@"
           }
         }
       }
@@ -1330,6 +1362,16 @@
         }
       }
     },
+    "Switch · RCM" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Switch · RCM"
+          }
+        }
+      }
+    },
     "Switch erkannt." : {
       "localizations" : {
         "de" : {
@@ -1404,16 +1446,6 @@
         }
       }
     },
-    "Switch · RCM" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Switch · RCM"
-          }
-        }
-      }
-    },
     "Symbolgrafik: „nintendo switch“ von Mikicon, Noun Project (CC BY 3.0)" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1447,320 +1479,6 @@
         }
       }
     },
-    "USB-Anbindung: libusb (LGPL-2.1-or-later)" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "USB-Anbindung: libusb (LGPL-2.1-or-later)"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "USB layer: libusb (LGPL-2.1-or-later)"
-          }
-        }
-      }
-    },
-    "USB-Fehler bei „%@“ (Code %d)." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "USB-Fehler bei „%@“ (Code %d)."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "USB error during “%@” (code %d)."
-          }
-        }
-      }
-    },
-    "Unerwarteter Befehl von der Switch: %u." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unerwarteter Befehl von der Switch: %u."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unexpected command from the Switch: %u."
-          }
-        }
-      }
-    },
-    "Ungültige Paketkennung — Antwort stammt nicht von Sphaira." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ungültige Paketkennung — Antwort stammt nicht von Sphaira."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Invalid packet signature — the reply didn’t come from Sphaira."
-          }
-        }
-      }
-    },
-    "Ungültige Payload ausgewählt: %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Invalid payload selected: %@"
-          }
-        }
-      }
-    },
-    "Unvollständige RCM-Übertragung bei „%@“: %lld von %lld Bytes." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Unvollständige RCM-Übertragung bei „%1$@“: %2$lld von %3$lld Bytes."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Incomplete RCM transfer during “%1$@”: %2$lld of %3$lld bytes."
-          }
-        }
-      }
-    },
-    "Verbindungsstatus: %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verbindungsstatus: %@"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Connection status: %@"
-          }
-        }
-      }
-    },
-    "Verbunden: %@ (Seriennummer %@)" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verbunden: %@ (Seriennummer %@)"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Connected: %@ (serial number %@)"
-          }
-        }
-      }
-    },
-    "Verfügbare Fusée-Versionen laden" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Load available Fusée versions"
-          }
-        }
-      }
-    },
-    "Verfügbare Hekate-Versionen laden" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Load available Hekate versions"
-          }
-        }
-      }
-    },
-    "Warte auf die Switch — Sphaira auf der Konsole öffnen (USB-Installation)." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Warte auf die Switch — Sphaira auf der Konsole öffnen (USB-Installation)."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Waiting for the Switch — open Sphaira on the console (USB install)."
-          }
-        }
-      }
-    },
-    "Warte auf die Switch — dort die USB-Installation in Sphaira öffnen …" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Warte auf die Switch — dort die USB-Installation in Sphaira öffnen …"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Waiting for the Switch — open the USB install in Sphaira …"
-          }
-        }
-      }
-    },
-    "Warteschlange leeren" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Warteschlange leeren"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clear queue"
-          }
-        }
-      }
-    },
-    "Weitere Titel hier ablegen oder klicken" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Weitere Titel hier ablegen oder klicken"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Drop more titles here, or click"
-          }
-        }
-      }
-    },
-    "Zugriff auf das USB-Gerät verweigert. Bitte Berechtigungen prüfen." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zugriff auf das USB-Gerät verweigert. Bitte Berechtigungen prüfen."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Access to the USB device was denied. Check your permissions."
-          }
-        }
-      }
-    },
-    "Zugriff auf die RCM-Switch verweigert. Wird sie von einer anderen App verwendet?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Access to the RCM Switch was denied. Is another app using it?"
-          }
-        }
-      }
-    },
-    "fehlgeschlagen: %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "fehlgeschlagen: %@"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "failed: %@"
-          }
-        }
-      }
-    },
-    "fertig" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "fertig"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "done"
-          }
-        }
-      }
-    },
-    "unbekannt" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "unbekannt"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "unknown"
-          }
-        }
-      }
-    },
-    "wartet" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "wartet"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "waiting"
-          }
-        }
-      }
-    },
-    "wird übertragen" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "wird übertragen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "transferring"
-          }
-        }
-      }
-    },
     "Über Sphaira Connect" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1778,6 +1496,40 @@
         }
       }
     },
+    "übersprungen — Switch hat nur %@ von %@ angefordert" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "übersprungen — Switch hat nur %@ von %@ angefordert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "skipped — the Switch requested only %@ of %@"
+          }
+        }
+      }
+    },
+    "übersprungen: %@" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "übersprungen: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "skipped: %@"
+          }
+        }
+      }
+    },
     "Übertrage %@ …" : {
       "localizations" : {
         "de" : {
@@ -1790,6 +1542,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Transferring %@ …"
+          }
+        }
+      }
+    },
+    "Überträgt Titelpakete per USB an Sphaira auf der Nintendo Switch." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Überträgt Titelpakete per USB an Sphaira auf der Nintendo Switch."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sends title packages over USB to Sphaira on the Nintendo Switch."
           }
         }
       }
@@ -1890,53 +1659,290 @@
         }
       }
     },
-    "Überträgt Titelpakete per USB an Sphaira auf der Nintendo Switch." : {
+    "unbekannt" : {
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Überträgt Titelpakete per USB an Sphaira auf der Nintendo Switch."
+            "value" : "unbekannt"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sends title packages over USB to Sphaira on the Nintendo Switch."
+            "value" : "unknown"
           }
         }
       }
     },
-    "übersprungen — Switch hat nur %@ von %@ angefordert" : {
-      "extractionState" : "manual",
+    "Unerwarteter Befehl von der Switch: %u." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "übersprungen — Switch hat nur %@ von %@ angefordert"
+            "value" : "Unerwarteter Befehl von der Switch: %u."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "skipped — the Switch requested only %@ of %@"
+            "value" : "Unexpected command from the Switch: %u."
           }
         }
       }
     },
-    "übersprungen: %@" : {
-      "extractionState" : "manual",
+    "Ungültige Paketkennung — Antwort stammt nicht von Sphaira." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "übersprungen: %@"
+            "value" : "Ungültige Paketkennung — Antwort stammt nicht von Sphaira."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "skipped: %@"
+            "value" : "Invalid packet signature — the reply didn’t come from Sphaira."
+          }
+        }
+      }
+    },
+    "Ungültige Payload ausgewählt: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid payload selected: %@"
+          }
+        }
+      }
+    },
+    "Unvollständige RCM-Übertragung bei „%@“: %lld von %lld Bytes." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Unvollständige RCM-Übertragung bei „%1$@“: %2$lld von %3$lld Bytes."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Incomplete RCM transfer during “%1$@”: %2$lld of %3$lld bytes."
+          }
+        }
+      }
+    },
+    "USB-Anbindung: libusb (LGPL-2.1-or-later)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "USB-Anbindung: libusb (LGPL-2.1-or-later)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "USB layer: libusb (LGPL-2.1-or-later)"
+          }
+        }
+      }
+    },
+    "USB-Fehler bei „%@“ (Code %d)." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "USB-Fehler bei „%@“ (Code %d)."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "USB error during “%@” (code %d)."
+          }
+        }
+      }
+    },
+    "Verbindungsstatus: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbindungsstatus: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connection status: %@"
+          }
+        }
+      }
+    },
+    "Verbleibend" : {
+
+    },
+    "Verbleibende Zeit: %@" : {
+
+    },
+    "Verbunden: %@ (Seriennummer %@)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbunden: %@ (Seriennummer %@)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connected: %@ (serial number %@)"
+          }
+        }
+      }
+    },
+    "Verfügbare Fusée-Versionen laden" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Load available Fusée versions"
+          }
+        }
+      }
+    },
+    "Verfügbare Hekate-Versionen laden" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Load available Hekate versions"
+          }
+        }
+      }
+    },
+    "Warte auf die Switch — dort die USB-Installation in Sphaira öffnen …" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Warte auf die Switch — dort die USB-Installation in Sphaira öffnen …"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for the Switch — open the USB install in Sphaira …"
+          }
+        }
+      }
+    },
+    "Warte auf die Switch — Sphaira auf der Konsole öffnen (USB-Installation)." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Warte auf die Switch — Sphaira auf der Konsole öffnen (USB-Installation)."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for the Switch — open Sphaira on the console (USB install)."
+          }
+        }
+      }
+    },
+    "Warteschlange leeren" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Warteschlange leeren"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear queue"
+          }
+        }
+      }
+    },
+    "wartet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "wartet"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "waiting"
+          }
+        }
+      }
+    },
+    "Weitere Titel hier ablegen oder klicken" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weitere Titel hier ablegen oder klicken"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drop more titles here, or click"
+          }
+        }
+      }
+    },
+    "wird übertragen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "wird übertragen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "transferring"
+          }
+        }
+      }
+    },
+    "Zugriff auf das USB-Gerät verweigert. Bitte Berechtigungen prüfen." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zugriff auf das USB-Gerät verweigert. Bitte Berechtigungen prüfen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Access to the USB device was denied. Check your permissions."
+          }
+        }
+      }
+    },
+    "Zugriff auf die RCM-Switch verweigert. Wird sie von einer anderen App verwendet?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Access to the RCM Switch was denied. Is another app using it?"
           }
         }
       }

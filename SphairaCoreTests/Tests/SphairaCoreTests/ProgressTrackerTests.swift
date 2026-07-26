@@ -119,4 +119,19 @@ struct ProgressTrackerTests {
         _ = tracker.tick(now: 200 * Self.ms)
         #expect(tracker.bytesPerSecond < moving)
     }
+
+    @Test("tickCount only advances on an actual emission, not a throttled call")
+    func tickCountCountsEmissions() {
+        var tracker = ProgressTracker(totalBytes: 1000, startNanos: 0)
+        tracker.record(chunkSize: 100)
+
+        #expect(tracker.tick(now: 50 * Self.ms) == false)
+        #expect(tracker.tickCount == 0)
+
+        #expect(tracker.tick(now: 100 * Self.ms) == true)
+        #expect(tracker.tickCount == 1)
+
+        #expect(tracker.tick(now: 200 * Self.ms) == true)
+        #expect(tracker.tickCount == 2)
+    }
 }

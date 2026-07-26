@@ -7,6 +7,11 @@ struct RootView: View {
     @State private var rcmModel = RCMInjectorModel()
     @State private var mode: RootViewMode = .install
 
+    // The countdown badge's own displayed value, refreshed at most once a
+    // second — see `refreshCountdown(with:)` for why.
+    @State private var displayedRemainingSeconds: Double?
+    @State private var lastCountdownRefresh: Date = .distantPast
+
     private var backgroundTint: Color {
         if mode == .rcm {
             switch rcmModel.phase {
@@ -34,23 +39,45 @@ struct RootView: View {
         }
     }
 
-    /// `nil` — nothing running, badge hidden. `.nan` — running but the rate
-    /// isn't known yet, `ByteFormat.duration` renders that as an en dash so
-    /// the badge itself does not flicker in and out while idle moments pass.
-    private var activeRemainingSeconds: Double? {
+    /// `nil` — nothing running, badge hidden. `.nan` — running but the estimate
+    /// isn't trustworthy yet (rate unknown, or too few samples for the exponential
+    /// smoothing in `ProgressTracker` to have settled), rendered by
+    /// `ByteFormat.duration` as an en dash. This is the raw, per-tick value — see
+    /// `refreshCountdown(with:)` for why the badge doesn't bind to it directly.
+    private var rawRemainingSeconds: Double? {
         if mode == .install, model.phase == .transferring, let progress = model.progress {
-            guard progress.bytesPerSecond > 0 else { return .nan }
+            guard progress.bytesPerSecond > 0, progress.sampleCount >= 3 else { return .nan }
             return Double(progress.overallTotal - progress.overallSent) / progress.bytesPerSecond
         }
         if mode == .rcm, rcmModel.phase == .injecting {
-            guard rcmModel.bytesPerSecond > 0 else { return .nan }
+            guard rcmModel.bytesPerSecond > 0, rcmModel.sampleCount >= 3 else { return .nan }
             return Double(rcmModel.totalBytes - rcmModel.sentBytes) / rcmModel.bytesPerSecond
         }
         return nil
     }
 
     private var sizeKey: String {
-        "\(mode.rawValue)-\(model.items.count)-\(showsProgress)-\(model.isLogExpanded)-\(model.isBusy)-\(rcmModel.isLogExpanded)-\(rcmModel.isBusy)"
+        "\(mode.rawValue)-\(model.items.count)-\(showsProgress)-\(model.isLogExpanded)-\(model.isBusy)-\(rcmModel.isLogExpanded)-\(rcmModel.isBusy)-\(displayedRemainingSeconds != nil)"
+    }
+
+    /// The tracker feeding this emits a fresh sample roughly every 100 ms. Binding
+    /// the countdown's animation directly to that would retrigger a new 0.3 s
+    /// transaction before the previous one finishes — the badge would never
+    /// settle, looking restless for the whole transfer rather than just at the
+    /// start. Refreshing the *displayed* value at most once a second gives each
+    /// animation room to complete, like a real clock ticking instead of scrubbing.
+    private func refreshCountdown(with newValue: Double?) {
+        guard let newValue else {
+            displayedRemainingSeconds = nil
+            return
+        }
+        let previousWasSettled = displayedRemainingSeconds?.isFinite == true
+        if previousWasSettled, newValue.isFinite,
+           Date().timeIntervalSince(lastCountdownRefresh) < 1.0 {
+            return
+        }
+        lastCountdownRefresh = Date()
+        displayedRemainingSeconds = newValue
     }
 
     var body: some View {
@@ -91,13 +118,6 @@ struct RootView: View {
                 .padding(.trailing, 14)
                 .offset(y: -24)
         }
-        .overlay(alignment: .top) {
-            if let seconds = activeRemainingSeconds {
-                CountdownBadgeView(remainingSeconds: seconds)
-                    .padding(.top, 34)
-            }
-        }
-        .animation(.snappy(duration: 0.3), value: activeRemainingSeconds)
         .frame(minWidth: 560)
         .onAppear { startSelectedMonitor() }
         .onDisappear {
@@ -109,10 +129,22 @@ struct RootView: View {
             rcmModel.stopMonitoring()
             startSelectedMonitor()
         }
+        .onChange(of: rawRemainingSeconds) { _, newValue in
+            refreshCountdown(with: newValue)
+        }
     }
 
     private var content: some View {
         VStack(spacing: Spacing.lg) {
+            // Part of the normal layout flow, not an overlay: the window grows to
+            // fit it in (see `sizeKey`) instead of it floating on top of the mode
+            // switcher underneath.
+            if let seconds = displayedRemainingSeconds {
+                CountdownBadgeView(remainingSeconds: seconds)
+                    .frame(maxWidth: .infinity)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
             ModeSwitcherView(mode: $mode, isDisabled: model.isBusy || rcmModel.isBusy)
 
             if mode == .install {
@@ -126,6 +158,7 @@ struct RootView: View {
         .animation(.snappy(duration: 0.35), value: showsProgress)
         .animation(.easeInOut(duration: 0.25), value: model.phase)
         .animation(.easeInOut(duration: 0.25), value: rcmModel.phase)
+        .animation(.snappy(duration: 0.3), value: displayedRemainingSeconds)
     }
 
     @ViewBuilder

@@ -221,7 +221,7 @@ onProgress: { sent, total in
     tracker.record(chunkSize: sent - lastSent)
     lastSent = sent
     if tracker.tick(now: DispatchTime.now().uptimeNanoseconds) {
-        continuation.yield(.progress(sent: sent, total: total, bytesPerSecond: tracker.bytesPerSecond))
+        continuation.yield(.progress(sent: sent, total: total, bytesPerSecond: tracker.bytesPerSecond, sampleCount: tracker.tickCount))
     }
 }
 ```
@@ -230,6 +230,28 @@ RCM payloads are typically small (Hekate is around 110 KB) and often transfer in
 100 ms throttle window, so `bytesPerSecond` can stay at `0` for the whole injection — the
 [[ui/window-and-views]] countdown badge treats that the same way as an install session between
 throughput samples: visible, showing an en dash, not hidden.
+
+## `tickCount` — withholding an estimate until smoothing has settled
+
+`bytesPerSecond`'s first sample fully overwrites the running average with no smoothing at all (see
+above) — deliberately, so a transfer doesn't start reporting 0 B/s. The flip side: that first
+sample can be noisy (a slow USB handshake, a small first chunk), and a *remaining-time estimate*
+derived from it inherits that noise directly, then visibly swings as the next few smoothed samples
+correct it. `tickCount` — incremented once per successful (non-throttled) `tick` call — lets a
+caller withhold a derived estimate for the first couple of samples instead of showing it
+immediately:
+
+```swift
+guard progress.bytesPerSecond > 0, progress.sampleCount >= 3 else { return .nan }
+return Double(progress.overallTotal - progress.overallSent) / progress.bytesPerSecond
+```
+
+This is exactly what `RootView.rawRemainingSeconds` does for the countdown badge
+([[ui/window-and-views]]) — `ProgressPanelView`'s smaller "Rest: …" caption does not use this gate,
+because at that size the same brief initial noise was never reported as a problem; the badge, being
+large and animated, made it obvious enough to fix. `tickCountCountsEmissions` in
+`ProgressTrackerTests.swift` covers the counter itself: it only advances on an actual emission, not
+on a call that the 100 ms throttle swallowed.
 
 ## One known loose end
 

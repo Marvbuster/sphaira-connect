@@ -16,6 +16,10 @@ nonisolated struct TransferProgress: Equatable, Sendable {
     var overallSent: Int64
     var overallTotal: Int64
     var bytesPerSecond: Double
+    /// Number of throughput samples seen for the current file. A UI showing a
+    /// derived estimate (remaining time) can withhold it for the first few
+    /// samples, before smoothing has had a chance to settle.
+    var sampleCount: Int
 }
 
 final class InstallSession: @unchecked Sendable {
@@ -161,7 +165,8 @@ final class InstallSession: @unchecked Sendable {
                 itemTotal: Int64(size),
                 overallSent: completedBytes + sent,
                 overallTotal: overallTotal,
-                bytesPerSecond: tracker.bytesPerSecond
+                bytesPerSecond: tracker.bytesPerSecond,
+                sampleCount: tracker.tickCount
             ))
         }
 

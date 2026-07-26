@@ -77,11 +77,11 @@ Note that `.finished`/`.succeeded` get the calm blue back, not the green. The gr
 mark in the progress panel. `.waitingForSwitch` shares its color with `.transferring`, because from
 the user's point of view the waiting is already part of the running transfer.
 
-## Header, status indicator and countdown as overlays
+## Header and status indicator as overlays
 
-Because the title bar is transparent and the content reaches up underneath it, the title, the
-status indicator and (since v1.2) the remaining-time countdown do not live in the content stack but
-as overlays with a negative offset in the title-bar zone:
+Because the title bar is transparent and the content reaches up underneath it, the title and the
+status indicator do not live in the content stack but as overlays with a negative offset in the
+title-bar zone:
 
 ```swift
 .overlay(alignment: .topLeading) {
@@ -101,34 +101,27 @@ as overlays with a negative offset in the title-bar zone:
         .padding(.trailing, 14)
         .offset(y: -24)
 }
-.overlay(alignment: .top) {
-    if let seconds = activeRemainingSeconds {
-        CountdownBadgeView(remainingSeconds: seconds)
-            .padding(.top, 34)
-    }
-}
-.animation(.snappy(duration: 0.3), value: activeRemainingSeconds)
 ```
 
 The `padding(.leading, 80)` keeps clear of the traffic-light buttons, which `WindowStyleConfigurator` deliberately leaves visible. The title is `accessibilityHidden` — it is decoration, and the window name is in the window list anyway.
 
 `StatusPill` shows a dot plus text and switches with an animation (`.easeInOut(duration: 0.35)`) between green (connected, with a glow via `shadow`) and translucent white (not connected). The text has three tiers: the device summary from the running session, otherwise "Switch verbunden", otherwise "Keine Switch". For assistive technology, `accessibilityLabel("Verbindungsstatus: \(text)")` combines both.
 
-`activeRemainingSeconds` is `nil` while nothing is running (the badge is absent entirely), `.nan`
-while running but the throughput isn't known yet (`ByteFormat.duration` renders that as an en dash,
-so the badge doesn't flicker in and out during that brief window), and the actual remaining-seconds
-estimate otherwise — computed from whichever mode's model is currently active. See
-[[protocol/progress-tracking]] for where the RCM side of that estimate comes from.
+**The remaining-time countdown (v1.2) is deliberately *not* an overlay.** A first attempt placed it
+exactly there, floating above the content — it visibly covered the mode switcher instead of the
+window growing to make room. It lives inside `content` instead, as the first element above
+`ModeSwitcherView`, so it participates in the normal layout and the `sizeKey`-driven resize like
+everything else. Details in the content section below.
 
 ## The sizeKey
 
 ```swift
 private var sizeKey: String {
-    "\(mode.rawValue)-\(model.items.count)-\(showsProgress)-\(model.isLogExpanded)-\(model.isBusy)-\(rcmModel.isLogExpanded)-\(rcmModel.isBusy)"
+    "\(mode.rawValue)-\(model.items.count)-\(showsProgress)-\(model.isLogExpanded)-\(model.isBusy)-\(rcmModel.isLogExpanded)-\(rcmModel.isBusy)-\(displayedRemainingSeconds != nil)"
 }
 ```
 
-This is the trigger for resizing the window: exactly the states that change the height of the content, across both modes. The string itself is meaningless — only its **change** counts. Deliberately not included are progress values, log lines and phase changes without layout consequences; otherwise the window would try to re-measure itself several times per second during a transfer.
+This is the trigger for resizing the window: exactly the states that change the height of the content, across both modes — including now whether the countdown badge is showing. The string itself is meaningless — only its **change** counts. Deliberately not included are progress values, log lines and phase changes without layout consequences; otherwise the window would try to re-measure itself several times per second during a transfer.
 
 ## The content and its transitions
 
@@ -145,6 +138,23 @@ if model.items.isEmpty {
     DropZoneView(isCompact: true, isEnabled: !model.isBusy, onURLs: addAnimated)
 }
 ```
+
+Ahead of `ModeSwitcherView`, `content` conditionally includes the countdown badge:
+
+```swift
+if let seconds = displayedRemainingSeconds {
+    CountdownBadgeView(remainingSeconds: seconds)
+        .frame(maxWidth: .infinity)
+        .transition(.opacity.combined(with: .move(edge: .top)))
+}
+```
+
+Being part of the same `VStack` as everything else is what makes the window grow to fit it instead
+of it overlapping the switcher underneath — see [[architecture/system-overview]] and the sizeKey
+above. `.transition` has to sit at *this* call site (where the view is conditionally inserted or
+removed) to have any effect; putting one inside `CountdownBadgeView`'s own body, as a first attempt
+did, is silently inert — that view is never itself conditionally shown or hidden from its own
+perspective.
 
 The drop zone exists in both states — empty as a large area (230 pt tall), filled as a narrow strip (44 pt) below the list. After that come, conditionally, the waiting row (`ProgressView` plus a hint text, only for `.waitingForSwitch`), the progress panel, the log and the action bar.
 
@@ -326,12 +336,23 @@ model reports `isBusy`, so the mode cannot change mid-transfer.
 
 ### CountdownBadgeView
 
-Also extracted to stay under the line limit once it was added in v1.2. A presentational view: it
-takes a plain `remainingSeconds: Double` (visibility is the caller's job, see the overlay above) and
-renders it large (`size: 34, weight: .bold, design: .rounded`), with `.monospacedDigit()` so the
-digits don't jitter horizontally and `.contentTransition(.numericText(countsDown: true))` for the
-native SwiftUI "counting down" digit animation. `RootView` ties everything together with a single
-`.animation(.snappy(duration: 0.3), value: activeRemainingSeconds)` — since that value changes on
-every throttled progress tick, the whole badge (appearing, disappearing, and each digit update)
-animates smoothly without any explicit `withAnimation` at the call sites that mutate the underlying
-model state.
+Extracted to its own file to stay under the line limit once it was added in v1.2. A presentational
+view: it takes a plain `remainingSeconds: Double` (visibility and placement are the caller's job,
+see the content section above) and renders it large (`size: 34, weight: .bold, design: .rounded`),
+with `.monospacedDigit()` so the digits don't jitter horizontally and
+`.contentTransition(.numericText(countsDown: true))` for the native SwiftUI "counting down" digit
+animation.
+
+**Why the value it receives is throttled, not raw.** `ProgressTracker` emits a fresh sample roughly
+every 100 ms, but each `.snappy(duration: 0.3)` animation takes 300 ms. Binding the badge directly
+to the raw per-tick value — the first attempt at this feature did exactly that — retriggers a new
+animation before the previous one finishes, for the *entire* transfer: the badge never reaches a
+resting frame, and looks restless throughout rather than just at the start. `RootView` decouples
+the two: `rawRemainingSeconds` is the per-tick estimate (also withheld as `.nan` until
+`ProgressTracker.tickCount` reaches 3, so the exponential smoothing has a moment to settle before
+anything is shown at all); `refreshCountdown(with:)`, called from `.onChange(of: rawRemainingSeconds)`,
+copies it into `displayedRemainingSeconds` — the value the badge actually renders — at most once a
+second once a settled number is already showing. `displayedRemainingSeconds` is what
+`.animation(.snappy(duration: 0.3), value:)` is keyed to, so appearing, disappearing and each
+once-a-second update all get a full, uninterrupted animation cycle — a clock ticking down, not a
+number scrubbing.
