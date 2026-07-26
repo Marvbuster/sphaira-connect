@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Collapsible log, monospaced, scrolls to the end automatically.
 struct LogConsoleView: View {
-    var lines: [InstallerModel.LogLine]
+    var lines: [AppLogLine]
     @Binding var isExpanded: Bool
 
     var body: some View {

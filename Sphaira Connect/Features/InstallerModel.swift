@@ -71,16 +71,10 @@ final class InstallerModel {
         case failed(String)
     }
 
-    struct LogLine: Identifiable, Equatable {
-        let id: UUID
-        let date: Date
-        let text: String
-    }
-
     var items: [InstallItem] = []
     var phase: Phase = .idle
     var progress: TransferProgress?
-    var log: [LogLine] = []
+    var log: [AppLogLine] = []
     var switchAttached = false
     var deviceSummary: String?
     var isLogExpanded = false
@@ -267,7 +261,7 @@ final class InstallerModel {
     // MARK: - Log
 
     private func appendLog(_ text: String) {
-        log.append(LogLine(id: UUID(), date: .now, text: text))
+        log.append(AppLogLine(id: UUID(), date: .now, text: text))
         if log.count > Self.maxLogLines {
             log.removeFirst(log.count - Self.maxLogLines)
         }

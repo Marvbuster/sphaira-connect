@@ -8,6 +8,7 @@ status: current
 related:
   - protocol/install-session-flow
   - protocol/sph0-wire-protocol
+  - protocol/rcm-payload-injection
   - architecture/concurrency-and-cancellation
   - operations/build-configuration
   - operations/troubleshooting
@@ -44,7 +45,7 @@ How the library is found and statically linked is described in [[operations/buil
 
 The class is `final class USBTransport: @unchecked Sendable` and every method is explicitly `nonisolated`. That is not cosmetic: the project sets `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`, so every type would be bound to the main thread by default. A blocking `libusb_bulk_transfer` on the MainActor would freeze the UI for the entire transfer — the full picture is in [[architecture/concurrency-and-cancellation]].
 
-If you are looking for the layer **above** — packet ordering, commands, file transfer — it is in [[protocol/install-session-flow]]; the wire format itself is in [[protocol/sph0-wire-protocol]].
+If you are looking for the layer **above** — packet ordering, commands, file transfer — it is in [[protocol/install-session-flow]]; the wire format itself is in [[protocol/sph0-wire-protocol]]. `USB/RCMTransport.swift` is a structural sibling of this file for an entirely different device and one-shot operation — the Tegra recovery-mode exploit, not the Sphaira installer — described in [[protocol/rcm-payload-injection]].
 
 ## Device discovery
 

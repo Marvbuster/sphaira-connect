@@ -1,7 +1,7 @@
 # Sphaira Connect — Wiki Index
 
 > Auto-maintained. Regenerate with `/wiki-index` (or `wiki ls sphaira-connect`).
-> **Last updated:** 2026-07-26 | **Articles:** 12 (planned) | **Archived:** 0 | **App:** v1.0 (Build 1)
+> **Last updated:** 2026-07-26 | **Articles:** 13 (planned) | **Archived:** 0 | **App:** v1.1 (Build 1)
 
 ---
 
@@ -11,11 +11,12 @@
 - [Concurrency and Cancellation — MainActor Default, Event Channel, CancelFlag](articles/architecture/concurrency-and-cancellation.md) — `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`, session start via `Task.detached`, one ordered `AsyncStream` (`SessionEvent`), NSLock-guarded CancelFlag
 - [Queue and File Scanning — InstallItem, ItemScanner, ByteFormat](articles/architecture/queue-and-file-scanning.md) — Folder recursion, extension filter (nsp/xci/nsz/xcz), duplicate detection, stable sorting, crash-proof formatting
 
-## Protocol (3)
+## Protocol (4)
 
 - [The SPH0 USB Protocol — Packet Format, CRC32C, Commands](articles/protocol/sph0-wire-protocol.md) — 24-byte packet of six `UInt32` LE, CRC32C over the first 20 bytes, validation order in `decode`, `quit`/`open`, dataOffset beyond 4 GB, sendFileInfo bit packing
 - [Install Session Flow — The State Machine](articles/protocol/install-session-flow.md) — open → file list → command loop → file transfer, orderly session shutdown after a file error, counting only the bytes actually transferred
 - [Progress Calculation — Cumulative Counting Instead of a High-Water Mark](articles/protocol/progress-tracking.md) — Why XCI jumped straight to 100 %, summation clamped to the file size, 100 ms throttling, exponential throughput smoothing with an injected timestamp
+- [RCM Payload Injection — Fusée Gelée Image, Trigger, Official Presets](articles/protocol/rcm-payload-injection.md) — RCM image layout (header, address table, intermezzo relocator), `RCMTriggerOutcome` classification, Hekate/Fusée official-release downloads with SHA-256 verification and path-traversal guards
 
 ## USB (1)
 
@@ -36,9 +37,9 @@
 
 ## Stats
 
-- **Total:** 12 articles (0 archived)
-- **By category:** Architecture(3), Protocol(3), USB(1), UI(2), Operations(3)
+- **Total:** 13 articles (0 archived)
+- **By category:** Architecture(3), Protocol(4), USB(1), UI(2), Operations(3)
 - **Language:** English
 - **Conventions:** kebab-case file names, mandatory frontmatter, Mermaid preferred
 - **Contract:** `CONTRACT.md` — binding for all signatures and the session flow
-- **Build:** MARKETING_VERSION 1.0 · CURRENT_PROJECT_VERSION 1 · macOS 26.5
+- **Build:** MARKETING_VERSION 1.1 · CURRENT_PROJECT_VERSION 1 · macOS 26.5

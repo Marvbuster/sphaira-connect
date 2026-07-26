@@ -12,6 +12,7 @@ the Sphaira homebrew app on a Nintendo Switch
 | Version | Build | Date | Status | In brief |
 |---------|-------|------|--------|----------|
 | v1.0.0 | 1 | 2026-07-26 | Shipped | First release — native SPH0 protocol, queue, progress, Liquid Glass interface |
+| v1.1.0 | 1 | 2026-07-26 | Shipped | RCM payload injection for unpatched Switches, official Hekate/Fusée presets with GitHub downloads |
 
 ## Directory structure
 

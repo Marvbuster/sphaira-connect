@@ -123,7 +123,7 @@ For tools and agents this also means: a diff that changes `project.pbxproj` is a
 
 ## Versioning
 
-`MARKETING_VERSION` (currently `1.0`) and `CURRENT_PROJECT_VERSION` (currently `1`) in the pbxproj are, according to `.wiki/wiki.config.md`, the single source for version and build number; the release notes under `release_notes/` follow them. The Info.plist is generated (`GENERATE_INFOPLIST_FILE = YES`), so there is no second place where a version could live.
+`MARKETING_VERSION` (currently `1.1`) and `CURRENT_PROJECT_VERSION` (currently `1`) in the pbxproj are, according to `.wiki/wiki.config.md`, the single source for version and build number; the release notes under `release_notes/` follow them. The Info.plist is generated (`GENERATE_INFOPLIST_FILE = YES`), so there is no second place where a version could live.
 
 ## Checklist for build failures
 

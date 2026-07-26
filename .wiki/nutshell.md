@@ -11,20 +11,21 @@ tech_stack:
   - swiftui
   - usb
   - xcode
+  - cryptokit
 versions:
-  app: "1.0"
+  app: "1.1"
   build: 1
   macos_min: "26.5"
   swift_language_mode: "5"
 size:
-  files: 29
-  prod_files: 23
-  test_files: 6
-  loc: 2581
-  prod_loc: 1979
-  test_loc: 602
+  files: 44
+  prod_files: 34
+  test_files: 10
+  loc: 4354
+  prod_loc: 3568
+  test_loc: 786
   languages:
-    swift: 2581
+    swift: 4354
 deployment:
   platform: macos
   notes: "Xcode build, statically linked libusb, sandbox off, Hardened Runtime on"
@@ -37,7 +38,9 @@ last_active: 2026-07-26
 **Sphaira Connect** is a native macOS app (SwiftUI, macOS 26.5) that transfers Nintendo Switch
 files (`nsp`, `xci`, `nsz`, `xcz`) over USB to the homebrew app **Sphaira**. It replaces the Python
 script `usb_install.py` — at its core the app is a reimplementation of that script's USB protocol,
-wrapped in a user interface with a drop zone, a queue, progress reporting and a log console.
+wrapped in a user interface with a drop zone, a queue, progress reporting and a log console. Since
+v1.1 it also has a second, independent mode: manual RCM payload injection (Fusée Gelée) for
+unpatched Switch consoles, with optional official Hekate/Fusée downloads from GitHub.
 
 ## Structure
 
@@ -64,11 +67,14 @@ without amending the contract):
    group; libusb is statically linked, the App Sandbox is off (USB access).
 6. **Tests run without Xcode**: `SphairaCoreTests/` is a standalone SwiftPM package whose
    `Sources/SphairaCore` is a symlink to `Sphaira Connect/Core` — `swift test` is all you need.
+7. **RCM injection is manual and separate from the installer.** It targets a different USB device
+   (`0x0955`/`0x7321` vs. Sphaira's `0x057E`/`0x3000`) and never fires on its own — only an
+   explicit button press calls `RCMInjectorModel.inject()`.
 
 ## What is documented
 
 - **architecture** (3 articles) — module boundaries, concurrency and cancellation, queue and file scanning
-- **protocol** (3 articles) — SPH0 wire format, session state machine, progress calculation
+- **protocol** (4 articles) — SPH0 wire format, session state machine, progress calculation, RCM payload injection
 - **usb** (1 article) — libusb transport, device discovery, timeouts and pitfalls
 - **ui** (2 articles) — design system (Liquid Glass) plus window and views
 - **operations** (3 articles) — build configuration, testing strategy, troubleshooting

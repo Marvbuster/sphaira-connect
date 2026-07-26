@@ -1,11 +1,11 @@
 # Sphaira Connect
 
-**A native macOS app that sends title packages over USB to [Sphaira](https://github.com/ITotalJustice/sphaira) on the Nintendo Switch.**
+**A native macOS app for Sphaira USB installs and manual RCM payload injection on Nintendo Switch.**
 
 [![Platform](https://img.shields.io/badge/Platform-macOS%2026%2B-000000?logo=apple&logoColor=white)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-6.3-F05138?logo=swift&logoColor=white)](https://swift.org)
 [![License](https://img.shields.io/badge/License-GPL--3.0-blue)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-52%20passing-brightgreen)](SphairaCoreTests)
+[![Tests](https://img.shields.io/badge/Tests-62%20passing-brightgreen)](SphairaCoreTests)
 [![Languages](https://img.shields.io/badge/Languages-EN%20%7C%20DE-lightgrey)](Sphaira%20Connect/Localizable.xcstrings)
 
 *[Deutsche Fassung](README.de.md)*
@@ -46,6 +46,10 @@ libusb is linked statically, so the finished app does **not** need Homebrew.
 - **Per-item queue state**; if a file fails, the session ends cleanly instead of
   tearing down the USB connection
 - **Device detection** in the background — the app knows whether a Switch is attached
+- **RCM payload injection** for `.bin` files such as Hekate or Fusée, with exact
+  APX-mode detection, transfer progress and an explicit manual trigger
+- **Persistent Hekate and Fusée presets**; the current and four previous official
+  versions of both are directly selectable, while custom `.bin` files remain supported
 - **Cancellation that actually works**, even mid-transfer
 - **Liquid Glass** throughout, with a transparent title bar and a window that
   resizes to its content
@@ -55,7 +59,7 @@ libusb is linked statically, so the finished app does **not** need Homebrew.
 | | |
 |---|---|
 | macOS | 26.0 or newer (Apple Silicon) |
-| Switch | Custom firmware with [Atmosphère](https://github.com/Atmosphere-NX/Atmosphere) |
+| Switch | Custom firmware with [Atmosphère](https://github.com/Atmosphere-NX/Atmosphere); an unpatched Erista/V1 console for RCM injection |
 | Console app | [Sphaira](https://github.com/ITotalJustice/sphaira) 1.0.0 or newer |
 
 ## Preparing the Switch
@@ -70,6 +74,29 @@ Without these three steps nothing happens, and no host app can do them for you:
    same interface and block each other.
 
 Once Sphaira shows "waiting for USB connection…", the console is ready.
+
+## Injecting an RCM payload
+
+1. Put an unpatched V1 Switch into RCM and connect it over USB. Its screen stays
+   black in RCM; the app identifies the distinct APX device as `0955:7321`.
+2. Select **RCM Payload**, then choose or drop a `.bin` file such as Hekate or Fusée.
+3. Press **Inject Payload**. Selecting a file or connecting a console never starts
+   an injection automatically.
+
+The payload file itself is not bundled. On an explicit click, the Hekate card's
+download menu fetches the current or one of the four previous stable standard
+payloads from the official
+[CTCaer/hekate releases](https://github.com/CTCaer/hekate/releases). The app
+verifies the file size and, when published, its SHA-256 digest. Patched V1 units
+and later Switch revisions can enter RCM but are not vulnerable to Fusée Gelée.
+
+The Hekate and Fusée preset cards remember local file paths between launches. The
+plus or pencil button still assigns or replaces any custom `.bin`; downloading or
+choosing a preset does not inject it until **Inject Payload** is pressed.
+
+The Fusée menu fetches `fusee.bin` directly from the official
+[Atmosphère releases](https://github.com/Atmosphere-NX/Atmosphere/releases) and
+also validates its file size and any published SHA-256 digest.
 
 ## Building
 
@@ -159,6 +186,14 @@ linked [libusb](https://libusb.info) is LGPL-2.1-or-later. GPL-3.0 is compatible
 with both. [NS-USBloader](https://github.com/developersu/ns-usbloader) is GPL-3.0
 for the same reason.
 
+## Open source, no agenda
+
+Sphaira Connect is GPL-3.0, full stop — no closed extras, no telemetry, and no
+license fine print or README manifesto beyond the four freedoms the GPL already
+grants. This is a USB tool for the Sphaira homebrew ecosystem, not a soapbox: it
+carries no political or ideological conditions on who may use, fork or redistribute
+it, and it never will.
+
 ## Third-party components
 
 Full details in [NOTICE.md](NOTICE.md).
@@ -169,6 +204,8 @@ Full details in [NOTICE.md](NOTICE.md).
   (caption removed, recentred, recoloured)
 - **libusb** — LGPL-2.1-or-later, linked statically
 - **Protocol implementation** — derived from `usb_install.py` in Sphaira, GPL-3.0
+- **RCM implementation** — based on the public Fusée Gelée protocol and informed by
+  [ironfoil](https://github.com/sermuns/ironfoil), Apache-2.0/MIT
 
 ## Thanks
 
@@ -178,6 +215,8 @@ Full details in [NOTICE.md](NOTICE.md).
 - [Mikicon](https://thenounproject.com/mikicon/) for the console artwork
 - [libusb](https://libusb.info) for the USB plumbing
 - [Atmosphère](https://github.com/Atmosphere-NX/Atmosphere), on which all of this rests
+- [ironfoil](https://github.com/sermuns/ironfoil) for its clear, compact RCM
+  implementation, which served as a reference
 
 ## Notice
 

@@ -11,6 +11,7 @@ related:
   - protocol/sph0-wire-protocol
   - protocol/install-session-flow
   - protocol/progress-tracking
+  - protocol/rcm-payload-injection
   - usb/libusb-transport
   - ui/window-and-views
   - operations/build-configuration
@@ -21,6 +22,8 @@ code_refs:
   - Sphaira Connect/ContentView.swift
   - Sphaira Connect/Features/InstallerModel.swift
   - Sphaira Connect/USB/InstallSession.swift
+  - Sphaira Connect/Features/RCMInjectorModel.swift
+  - Sphaira Connect/Features/Views/RootView.swift
 ---
 
 # System Overview
@@ -37,10 +40,16 @@ against individually.
 
 | Folder | May depend on | Isolation | Contents |
 |---|---|---|---|
-| `Sphaira Connect/Core/` | nothing but `Foundation` | `nonisolated` (exception: `ProgressTracker`, see [[architecture/concurrency-and-cancellation]]) | `CRC32C`, `Packet`, `InstallError`, `InstallItem`/`ItemScanner`, `ByteFormat`, `ProgressTracker` |
-| `Sphaira Connect/USB/` | `Core/`, libusb (C) | `@unchecked Sendable`, `nonisolated` | `USBTransport` (the raw bus), `InstallSession` (state machine), `LibUSBProbe` |
-| `Sphaira Connect/Shared/` | SwiftUI/AppKit | MainActor (default) | Design system: `DesignTokens`, `GlassEffectTheme`, `GlassButton`, `GlassInteractive`, `WindowStyleConfigurator` |
-| `Sphaira Connect/Features/` | everything below | MainActor | `InstallerModel` (`@Observable`) and `Views/` |
+| `Sphaira Connect/Core/` | nothing but `Foundation` | `nonisolated` (exception: `ProgressTracker`, see [[architecture/concurrency-and-cancellation]]) | `CRC32C`, `Packet`, `InstallError`, `InstallItem`/`ItemScanner`, `ByteFormat`, `ProgressTracker`, `RCMPayload`/`RCMTriggerOutcome`, `HekateRelease`/`FuseeRelease` |
+| `Sphaira Connect/USB/` | `Core/`, libusb (C) | `@unchecked Sendable`, `nonisolated` | `USBTransport` (the raw bus), `InstallSession` (state machine), `LibUSBProbe`, `RCMTransport` (Fusée Gelée trigger) |
+| `Sphaira Connect/Shared/` | SwiftUI/AppKit | MainActor (default) | Design system: `DesignTokens`, `GlassEffectTheme`, `GlassButton`, `GlassInteractive`, `WindowStyleConfigurator`; `AppLogLine`, the log-line type shared by both view models |
+| `Sphaira Connect/Features/` | everything below | MainActor | `InstallerModel`/`RCMInjectorModel` (`@Observable`), `HekateDownloader`/`FuseeDownloader`, and `Views/` |
+
+`RootView` switches between two independent, self-contained modes — the Sphaira USB installer
+described below, and manual RCM payload injection for unpatched consoles, detailed in
+[[protocol/rcm-payload-injection]]. They share the UI shell and the `AppLogLine` type but nothing
+at the transport or session level: different USB device (`0x057E`/`0x3000` vs. `0x0955`/`0x7321`),
+different model, different monitoring loop.
 
 The dividing line between `Core/` and `USB/` is not cosmetic, it is **driven by testability**:
 `SphairaCoreTests/Sources/SphairaCore` is a symlink to `Sphaira Connect/Core`
@@ -136,6 +145,10 @@ deliberately went beyond it. All three are additive:
   ([[protocol/install-session-flow]]).
 - **The return channel is an `AsyncStream`,** not a `Task { @MainActor in … }` per callback.
   The rationale is in [[architecture/concurrency-and-cancellation]].
+- **RCM payload injection is not in the contract at all.** It was added wholesale in v1.1 as a
+  second mode alongside the installer, following the same layering rules but touching a
+  completely different USB device and protocol. Full details in
+  [[protocol/rcm-payload-injection]].
 
 One piece of legacy is also visible: `USB/LibUSBProbe.swift` claims in its header comment that it
 is "used by the status display". In reality no other source file references the type — device

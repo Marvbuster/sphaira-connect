@@ -39,12 +39,13 @@ struct Sphaira_ConnectApp: App {
             ))
         }
 
-        line(String(localized: "Überträgt Titelpakete per USB an Sphaira auf der Nintendo Switch."),
+        line(String(localized: "Sphaira-USB-Installation und manuelle RCM-Payload-Injektion."),
              size: 11, color: .labelColor)
         line("")
         line(String(localized: "Symbolgrafik: „nintendo switch“ von Mikicon, Noun Project (CC BY 3.0)"))
         line(String(localized: "USB-Anbindung: libusb (LGPL-2.1-or-later)"))
         line(String(localized: "Protokoll abgeleitet aus usb_install.py von Sphaira (GPL-3.0)"))
+        line(String(localized: "RCM-Referenz: ironfoil (Apache-2.0/MIT)"))
         line("")
         line(String(localized: "Nicht mit Nintendo verbunden."))
 

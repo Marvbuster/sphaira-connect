@@ -40,6 +40,19 @@ The USB protocol implementation is derived from `tools/usb_install.py` in
 This derivation is the reason Sphaira Connect is GPL-3.0 rather than a permissive
 license — it is an obligation, not a preference.
 
+## RCM payload injection
+
+The RCM payload layout and USB flow are based on the publicly documented
+Fusée Gelée protocol. The implementation in
+[ironfoil](https://github.com/sermuns/ironfoil) by sermuns served as a reference.
+ironfoil is dual-licensed under
+[Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) or
+[MIT](https://opensource.org/license/mit).
+
+The 92-byte intermezzo relocator embedded in `Core/RCMPayload.swift` is the
+standard relocator distributed with Fusée Gelée implementations, including
+ironfoil.
+
 ## Not affiliated
 
 Nintendo, Nintendo Switch and related marks belong to Nintendo. This project is
