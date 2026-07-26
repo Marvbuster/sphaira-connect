@@ -1,5 +1,9 @@
 # Sphaira Connect
 
+<p align="center">
+  <img src="Design/icon/app-icon.png" width="128" alt="Sphaira Connect app icon">
+</p>
+
 **A native macOS app for Sphaira USB installs and manual RCM payload injection on Nintendo Switch.**
 
 [![Platform](https://img.shields.io/badge/Platform-macOS%2026%2B-000000?logo=apple&logoColor=white)](https://www.apple.com/macos/)
@@ -26,11 +30,10 @@ On top of that, v1.1 added a second, independent mode: manual RCM payload
 injection (Fusée Gelée) for unpatched Erista/V1 consoles, with built-in Hekate and
 Fusée presets that can fetch official releases straight from GitHub.
 
-<!-- Add screenshots here once available:
 <p align="center">
-  <img src="docs/screenshots/queue.png" width="800" alt="Transfer queue">
+  <img src="docs/screenshots/install-queue.png" width="800" alt="Transfer queue with per-item state">
+  <img src="docs/screenshots/rcm-injection.png" width="800" alt="RCM payload injection, successfully completed">
 </p>
--->
 
 ---
 
