@@ -276,6 +276,22 @@ guard tracker.sentBytes >= Int64(size) - Self.completionTolerance else {
 tens or hundreds of MB (or more) is a genuine skip — already-installed or rejected. 4096 bytes
 comfortably covers known PFS0/HFS0 entry alignment while staying negligible next to either case.
 
+**Follow-up bug in the same fix.** The per-file `.done`/`.skipped` state was corrected, but the
+*progress numbers* used for the overall-session summary were not: `emitProgress(force: true)` still
+reported `tracker.clampedSent` (the raw, tolerance-short byte count) as `itemSent`/`overallSent`. In
+a batch install, the very last progress snapshot for the last file is never superseded by a later
+update — so `ProgressPanelView.isComplete` (`overallSent >= overallTotal`, no tolerance) kept seeing
+a shortfall and showed "Transfer incomplete" with a warning triangle even though every file in the
+batch had actually finished (log: "Fertig — N Datei(en) übertragen"). Fixed by reporting the file's
+full size once it counts as complete, instead of the raw clamped count:
+
+```swift
+let succeeded = tracker.sentBytes >= Int64(size) - Self.completionTolerance
+emitProgress(force: true, sentOverride: succeeded ? Int64(size) : nil)
+
+guard succeeded else { /* ... skipped ... */ }
+```
+
 ---
 
 ## Quick diagnosis

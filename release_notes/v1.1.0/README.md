@@ -8,3 +8,4 @@
 |-------|------|-------------|
 | 1 | 2026-07-26 | RCM payload injection for unpatched Switches, official Hekate/Fusée presets with GitHub downloads |
 | 2 | 2026-07-26 | Fix: successful installs no longer misreported as skipped due to container padding |
+| 3 | 2026-07-26 | Fix: overall-session summary no longer shows "incomplete" when every file in a batch actually succeeded |

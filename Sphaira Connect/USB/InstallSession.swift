@@ -147,9 +147,13 @@ final class InstallSession: @unchecked Sendable {
             startNanos: DispatchTime.now().uptimeNanoseconds
         )
 
-        func emitProgress(force: Bool) {
+        // `sentOverride` reports the file as fully sent once it counts as complete
+        // (see completionTolerance below) — otherwise the last progress snapshot of
+        // a batch stays a few bytes short of overallTotal forever, and the summary
+        // view keeps showing "incomplete" even though every file actually succeeded.
+        func emitProgress(force: Bool, sentOverride: Int64? = nil) {
             guard tracker.tick(now: DispatchTime.now().uptimeNanoseconds, force: force) else { return }
-            let sent = tracker.clampedSent
+            let sent = sentOverride ?? tracker.clampedSent
             onProgress(TransferProgress(
                 itemIndex: index,
                 itemName: item.displayName,
@@ -193,14 +197,15 @@ final class InstallSession: @unchecked Sendable {
             emitProgress(force: false)
         }
 
-        emitProgress(force: true)
-
         // Sphaira also closes the file after a few kilobytes when it skips the
         // title (already installed) or rejects it (invalid header). The two cases
         // are indistinguishable on the wire — so we report the observed facts
         // rather than a guessed cause. A shortfall within completionTolerance is
         // container padding, not a skip: the install still succeeded.
-        guard tracker.sentBytes >= Int64(size) - Self.completionTolerance else {
+        let succeeded = tracker.sentBytes >= Int64(size) - Self.completionTolerance
+        emitProgress(force: true, sentOverride: succeeded ? Int64(size) : nil)
+
+        guard succeeded else {
             let reason = String(
                 localized: "übersprungen — Switch hat nur \(ByteFormat.size(tracker.sentBytes)) von \(ByteFormat.size(Int64(size))) angefordert"
             )

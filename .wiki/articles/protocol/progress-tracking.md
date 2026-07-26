@@ -170,9 +170,9 @@ The tracker is **per file** — it is created in `transferFile` and lives only f
 The overall progress only comes into being when the event is built:
 
 ```swift
-func emitProgress(force: Bool) {
+func emitProgress(force: Bool, sentOverride: Int64? = nil) {
     guard tracker.tick(now: DispatchTime.now().uptimeNanoseconds, force: force) else { return }
-    let sent = tracker.clampedSent
+    let sent = sentOverride ?? tracker.clampedSent
     onProgress(TransferProgress(
         itemIndex: index,
         itemName: item.displayName,
@@ -190,6 +190,14 @@ func emitProgress(force: Bool) {
 scan ([[architecture/queue-and-file-scanning]]). At the end of a file there is an
 `emitProgress(force: true)` that bypasses the throttling — otherwise a file's last message could be
 swallowed and the bar would stop just short of 100 %.
+
+`sentOverride` exists because `clampedSent` alone isn't enough once `completionTolerance` is in the
+picture ([[operations/troubleshooting]], case 10): a file that succeeded within the tolerance still
+has `sentBytes` a few bytes short of `size`, and that final (`force: true`) snapshot is never
+superseded by a later update if it happens to be the *last* file in a batch. Passing `Int64(size)`
+as the override once the file is known to have succeeded is what keeps `overallSent` reaching
+`overallTotal` — and with it `ProgressPanelView.isComplete` — accurate for the whole session, not
+just for the individual file's `.done`/`.skipped` state.
 
 `ProgressPanelView` ([[ui/window-and-views]]) takes it from there: two bars (overall and current
 file), both clamped to 1 and pinned to 1 when `isFinished`, plus the remaining time as
