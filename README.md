@@ -1,7 +1,7 @@
 # Sphaira Connect
 
 <p align="center">
-  <img src="Design/icon/app-icon.png" width="128" alt="Sphaira Connect app icon">
+  <img src="docs/banner.jpg" width="100%" alt="Sphaira Connect">
 </p>
 
 **A native macOS app for Sphaira USB installs and manual RCM payload injection on Nintendo Switch.**
@@ -9,7 +9,7 @@
 [![Platform](https://img.shields.io/badge/Platform-macOS%2026%2B-000000?logo=apple&logoColor=white)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-6.3-F05138?logo=swift&logoColor=white)](https://swift.org)
 [![License](https://img.shields.io/badge/License-GPL--3.0-blue)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-62%20passing-brightgreen)](SphairaCoreTests)
+[![Tests](https://img.shields.io/badge/Tests-63%20passing-brightgreen)](SphairaCoreTests)
 [![Languages](https://img.shields.io/badge/Languages-EN%20%7C%20DE-lightgrey)](Sphaira%20Connect/Localizable.xcstrings)
 
 *[Deutsche Fassung](README.de.md)*
