@@ -27,7 +27,7 @@ jobs:
 
       - name: Abhängigkeiten installieren
         # xcbeautify ist auf dem Läufer nicht zugesichert, deshalb explizit.
-        run: brew install libusb xcbeautify
+        run: brew install libusb xcbeautify create-dmg
 
       - name: Kernlogik testen
         run: swift test --package-path SphairaCoreTests
@@ -46,4 +46,29 @@ jobs:
             -scheme "Sphaira Connect" \
             -configuration Release \
             -destination 'platform=macOS,arch=arm64' \
+            -derivedDataPath build \
             | xcbeautify --renderer github-actions || exit ${PIPESTATUS[0]}
+
+      - name: Testfassung als DMG verpacken
+        # Damit man an einen lauffähigen Stand kommt, ohne ein Release zu
+        # veröffentlichen. Version ist der kurze Commit-Hash, nicht 1.0 —
+        # sonst verwechselt man Testfassungen mit echten Releases.
+        run: |
+          APP="build/Build/Products/Release/Sphaira Connect.app"
+          mkdir -p dmg-src && cp -R "$APP" dmg-src/
+          create-dmg \
+            --volname "Sphaira Connect" \
+            --window-pos 200 120 --window-size 620 400 \
+            --icon-size 128 \
+            --icon "Sphaira Connect.app" 165 190 \
+            --app-drop-link 455 190 \
+            --no-internet-enable \
+            "Sphaira-Connect-${GITHUB_SHA:0:7}.dmg" dmg-src/
+
+      - name: Testfassung bereitstellen
+        uses: actions/upload-artifact@v4
+        with:
+          name: Sphaira-Connect-${{ github.sha }}
+          path: '*.dmg'
+          retention-days: 14
+          if-no-files-found: error
