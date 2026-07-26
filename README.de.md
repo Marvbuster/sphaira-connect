@@ -153,10 +153,22 @@ statisch gelinkte [libusb](https://libusb.info) steht unter LGPL-2.1-or-later.
 GPL-3.0 ist mit beidem verträglich. [NS-USBloader](https://github.com/developersu/ns-usbloader)
 steht aus demselben Grund unter GPL-3.0.
 
+## Fremde Bestandteile
+
+Ausführlich in [NOTICE.md](NOTICE.md).
+
+- **Grafik des App-Symbols:** „nintendo switch" von **Mikicon**,
+  [Noun Project](https://thenounproject.com/browse/icons/term/nintendo-switch/),
+  lizenziert unter [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) —
+  bearbeitet (Beschriftung entfernt, neu zentriert, umgefärbt)
+- **libusb** — LGPL-2.1-or-later, statisch gelinkt
+- **Protokollimplementierung** — abgeleitet aus `usb_install.py` von Sphaira, GPL-3.0
+
 ## Dank
 
 - [ITotalJustice](https://github.com/ITotalJustice) für Sphaira und für `usb_install.py`,
   ohne das die Protokollarbeit deutlich mühsamer gewesen wäre
+- [Mikicon](https://thenounproject.com/mikicon/) für die Konsolengrafik
 - [libusb](https://libusb.info) für den USB-Unterbau
 - [Atmosphère](https://github.com/Atmosphere-NX/Atmosphere) als Grundlage von allem
 

@@ -466,6 +466,23 @@
         }
       }
     },
+    "Nicht mit Nintendo verbunden.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht mit Nintendo verbunden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not affiliated with Nintendo."
+          }
+        }
+      }
+    },
     "Noch keine Einträge.": {
       "localizations": {
         "de": {
@@ -510,6 +527,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Log"
+          }
+        }
+      }
+    },
+    "Protokoll abgeleitet aus usb_install.py von Sphaira (GPL-3.0)": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protokoll abgeleitet aus usb_install.py von Sphaira (GPL-3.0)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protocol derived from usb_install.py in Sphaira (GPL-3.0)"
           }
         }
       }
@@ -658,6 +692,23 @@
         }
       }
     },
+    "Symbolgrafik: „nintendo switch“ von Mikicon, Noun Project (CC BY 3.0)": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Symbolgrafik: „nintendo switch“ von Mikicon, Noun Project (CC BY 3.0)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Icon artwork: “nintendo switch” by Mikicon, Noun Project (CC BY 3.0)"
+          }
+        }
+      }
+    },
     "Titel oder Ordner auswählen": {
       "localizations": {
         "de": {
@@ -670,6 +721,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Choose titles or folders"
+          }
+        }
+      }
+    },
+    "USB-Anbindung: libusb (LGPL-2.1-or-later)": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "USB-Anbindung: libusb (LGPL-2.1-or-later)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "USB layer: libusb (LGPL-2.1-or-later)"
           }
         }
       }
@@ -898,6 +966,23 @@
         }
       }
     },
+    "Über Sphaira Connect": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Über Sphaira Connect"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About Sphaira Connect"
+          }
+        }
+      }
+    },
     "Übertrage %@ …": {
       "localizations": {
         "de": {
@@ -1006,6 +1091,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Start transfer to the Switch"
+          }
+        }
+      }
+    },
+    "Überträgt Titelpakete per USB an Sphaira auf der Nintendo Switch.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Überträgt Titelpakete per USB an Sphaira auf der Nintendo Switch."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sends title packages over USB to Sphaira on the Nintendo Switch."
           }
         }
       }

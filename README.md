@@ -159,11 +159,23 @@ linked [libusb](https://libusb.info) is LGPL-2.1-or-later. GPL-3.0 is compatible
 with both. [NS-USBloader](https://github.com/developersu/ns-usbloader) is GPL-3.0
 for the same reason.
 
+## Third-party components
+
+Full details in [NOTICE.md](NOTICE.md).
+
+- **App icon artwork:** "nintendo switch" by **Mikicon** from the
+  [Noun Project](https://thenounproject.com/browse/icons/term/nintendo-switch/),
+  licensed [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) — modified
+  (caption removed, recentred, recoloured)
+- **libusb** — LGPL-2.1-or-later, linked statically
+- **Protocol implementation** — derived from `usb_install.py` in Sphaira, GPL-3.0
+
 ## Thanks
 
 - [ITotalJustice](https://github.com/ITotalJustice) for Sphaira and for
   `usb_install.py`, without which working out the protocol would have been
   considerably more painful
+- [Mikicon](https://thenounproject.com/mikicon/) for the console artwork
 - [libusb](https://libusb.info) for the USB plumbing
 - [Atmosphère](https://github.com/Atmosphere-NX/Atmosphere), on which all of this rests
 

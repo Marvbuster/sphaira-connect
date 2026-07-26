@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Handheld-Konsole — Ebenen-Asset für Icon Composer</title>
+  <desc>
+    Herkunft: „nintendo switch“ von Mikicon, Noun Project, lizenziert unter
+    CC BY 3.0 — https://thenounproject.com/browse/icons/term/nintendo-switch/
+    Die im Original eingebettete Beschriftung wurde entfernt; die Namensnennung
+    erfolgt in NOTICE.md, im README und im Über-Fenster der App.
+
+    Bearbeitung: auf 1024×1024 zentriert (Faktor 7, Versatz 162/162), Füllung
+    auf einen schwachen senkrechten Verlauf gelegt. Ohne Glanzlicht, Schatten
+    und Deckkraft — das legt Icon Composer darüber.
+    Flache Füllung gewünscht? fill="url(#deviceFill)" durch fill="#FFFFFF" ersetzen.
+  </desc>
+  <defs>
+    <linearGradient id="deviceFill" x1="0" y1="0" x2="0" y2="1"
+                    gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#D2E7FF"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(162,162) scale(7)" fill="url(#deviceFill)">
+    <path d="M22.5,74.2h-7c-4,0-7.3-3.3-7.3-7.3V44.4c0-4,3.3-7.3,7.3-7.3h7v-2.2h2.3v-0.1h-9.3c-5.3,0-9.6,4.3-9.6,9.6v22.5   c0,5.3,4.3,9.6,9.6,9.6h7V74.2z"/>
+    <circle cx="15.3" cy="45.1" r="3.9"/>
+    <circle cx="15.3" cy="53.9" r="1.8"/>
+    <circle cx="15.3" cy="60.2" r="1.8"/>
+    <circle cx="12.2" cy="57" r="1.8"/>
+    <circle cx="18.5" cy="57" r="1.8"/>
+    <path d="M84.5,23.5h-9.3v11.3h2.3v-9.1h7c4,0,7.3,3.3,7.3,7.3v22.5c0,4-3.3,7.3-7.3,7.3h-7v2.3h7c5.3,0,9.6-4.3,9.6-9.6V33.1   C94.1,27.8,89.8,23.5,84.5,23.5z"/>
+    <circle cx="84.7" cy="46.8" r="3.9"/>
+    <circle cx="84.7" cy="38.1" r="1.8"/>
+    <circle cx="84.7" cy="31.7" r="1.8"/>
+    <circle cx="87.8" cy="34.9" r="1.8"/>
+    <circle cx="81.5" cy="34.9" r="1.8"/>
+    <path d="M77.5,63V34.8h-2.3H24.8h-2.3V37v37.2v2.3h2.3h52.7V65.2V63z M75.2,65.2v9H24.8V37.1h50.5V65.2z"/>
+    <path d="M73.6,38.8H26.4v33.8h47.1V38.8z M71.3,70.3H28.7V41h42.6V70.3z"/>
+  </g>
+</svg>
