@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    # macos-26 ist arm64 und bringt Xcode 26 mit — beides nötig, weil die App
+    # auf macOS 26 zielt und glassEffect nutzt. Homebrew liegt dort unter
+    # /opt/homebrew, also genau dort, wohin OTHER_LDFLAGS zeigt.
+    runs-on: macos-26
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Werkzeuge anzeigen
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Abhängigkeiten installieren
+        # xcbeautify ist auf dem Läufer nicht zugesichert, deshalb explizit.
+        run: brew install libusb xcbeautify
+
+      - name: Kernlogik testen
+        run: swift test --package-path SphairaCoreTests
+
+      - name: Debug bauen
+        run: |
+          xcodebuild build \
+            -scheme "Sphaira Connect" \
+            -configuration Debug \
+            -destination 'platform=macOS,arch=arm64' \
+            | xcbeautify --renderer github-actions || exit ${PIPESTATUS[0]}
+
+      - name: Release bauen
+        run: |
+          xcodebuild build \
+            -scheme "Sphaira Connect" \
+            -configuration Release \
+            -destination 'platform=macOS,arch=arm64' \
+            | xcbeautify --renderer github-actions || exit ${PIPESTATUS[0]}

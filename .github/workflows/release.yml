@@ -1,0 +1,98 @@
+name: Release
+
+# Läuft, wenn ein Versions-Tag geschoben wird, etwa: git tag v1.0.0 && git push --tags
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Versions-Tag, z. B. v1.0.0'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version bestimmen
+        id: version
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "number=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: libusb installieren
+        run: brew install libusb
+
+      - name: Kernlogik testen
+        # Ein Release ohne grüne Tests gibt es nicht.
+        run: swift test --package-path SphairaCoreTests
+
+      - name: Release bauen
+        run: |
+          xcodebuild build \
+            -scheme "Sphaira Connect" \
+            -configuration Release \
+            -destination 'platform=macOS,arch=arm64' \
+            -derivedDataPath build
+
+      - name: App verpacken
+        id: package
+        run: |
+          APP="build/Build/Products/Release/Sphaira Connect.app"
+          test -d "$APP" || { echo "App-Bundle nicht gefunden"; exit 1; }
+
+          # Die Signatur muss die Verpackung überleben — ditto ist der von Apple
+          # vorgesehene Weg, zip zerstört Symlinks und erweiterte Attribute.
+          ZIP="Sphaira-Connect-${{ steps.version.outputs.number }}-arm64.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
+
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+          echo "sha=$(shasum -a 256 "$ZIP" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Verpacktes Bundle prüfen
+        run: |
+          rm -rf verify && mkdir verify
+          ditto -x -k "${{ steps.package.outputs.zip }}" verify
+          codesign --verify --verbose=2 "verify/Sphaira Connect.app"
+          # Ad-hoc signiert heißt: keine Team-Kennung. Steht dort eine, ist
+          # versehentlich ein Entwicklerkonto in den Build geraten.
+          if codesign -dv "verify/Sphaira Connect.app" 2>&1 | grep -q '^TeamIdentifier=[^n]'; then
+            echo "FEHLER: Das Bundle trägt eine Apple-Team-Kennung."
+            exit 1
+          fi
+
+      - name: Anmerkungen zusammenstellen
+        id: notes
+        run: |
+          NOTES_DIR="release_notes/v${{ steps.version.outputs.number }}"
+          {
+            if [ -d "$NOTES_DIR" ]; then
+              cat "$NOTES_DIR"/macos_build_*.md 2>/dev/null || true
+              echo
+            fi
+            echo "## Installation"
+            echo
+            echo "Entpacken, in den Programme-Ordner ziehen, beim ersten Start"
+            echo "Rechtsklick → **Öffnen**. Die App ist ad-hoc signiert und nicht"
+            echo "notarisiert, deshalb verweigert Gatekeeper sonst den Start."
+            echo
+            echo "\`\`\`"
+            echo "SHA-256  ${{ steps.package.outputs.sha }}"
+            echo "\`\`\`"
+          } > RELEASE_NOTES.md
+
+      - name: Veröffentlichen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            "${{ steps.package.outputs.zip }}" \
+            --title "Sphaira Connect ${{ steps.version.outputs.number }}" \
+            --notes-file RELEASE_NOTES.md
