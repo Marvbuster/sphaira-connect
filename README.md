@@ -1,23 +1,25 @@
 # Sphaira Connect
 
-**Native macOS-App, die Titelpakete per USB an [Sphaira](https://github.com/ITotalJustice/sphaira) auf der Nintendo Switch überträgt.**
+**A native macOS app that sends title packages over USB to [Sphaira](https://github.com/ITotalJustice/sphaira) on the Nintendo Switch.**
 
-[![Plattform](https://img.shields.io/badge/Plattform-macOS%2026%2B-000000?logo=apple&logoColor=white)](https://www.apple.com/macos/)
+[![Platform](https://img.shields.io/badge/Platform-macOS%2026%2B-000000?logo=apple&logoColor=white)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-6.3-F05138?logo=swift&logoColor=white)](https://swift.org)
-[![Lizenz](https://img.shields.io/badge/Lizenz-GPL--3.0-blue)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-52%20grün-brightgreen)](SphairaCoreTests)
-[![Sprachen](https://img.shields.io/badge/Sprachen-DE%20%7C%20EN-lightgrey)](Sphaira%20Connect/Localizable.xcstrings)
+[![License](https://img.shields.io/badge/License-GPL--3.0-blue)](LICENSE)
+[![Tests](https://img.shields.io/badge/Tests-52%20passing-brightgreen)](SphairaCoreTests)
+[![Languages](https://img.shields.io/badge/Languages-EN%20%7C%20DE-lightgrey)](Sphaira%20Connect/Localizable.xcstrings)
 
-Sphaira hat mit Version 1.0.0 sein USB-Protokoll von Tinfoil auf ein eigenes
-umgestellt ([Issue #249](https://github.com/ITotalJustice/sphaira/issues/249)).
-Seitdem funktionieren NS-USBloader, Fluffy und frhop nicht mehr damit — der
-einzige verbliebene Weg war das mitgelieferte Python-Skript `tools/usb_install.py`.
-Sphaira Connect ist dessen native Entsprechung: eine echte macOS-App mit
-Warteschlange, Fortschrittsanzeige und Protokoll, ohne Python-Umgebung.
+*[Deutsche Fassung](README.de.md)*
 
-<!-- Screenshots hier einsetzen, sobald vorhanden:
+Sphaira 1.0.0 replaced its Tinfoil-compatible USB protocol with a custom one
+([issue #249](https://github.com/ITotalJustice/sphaira/issues/249)). NS-USBloader,
+Fluffy and frhop stopped working with it, leaving the bundled Python script
+`tools/usb_install.py` as the only way to install over USB. Sphaira Connect is its
+native counterpart: a real macOS app with a queue, progress display and a log —
+no Python environment required.
+
+<!-- Add screenshots here once available:
 <p align="center">
-  <img src="docs/screenshots/queue.png" width="800" alt="Warteschlange">
+  <img src="docs/screenshots/queue.png" width="800" alt="Transfer queue">
 </p>
 -->
 
@@ -25,143 +27,148 @@ Warteschlange, Fortschrittsanzeige und Protokoll, ohne Python-Umgebung.
 
 ## Download
 
-Fertige Versionen liegen unter **[Releases](../../releases)**. Die App ist signiert,
-aber nicht notarisiert — beim ersten Start deshalb Rechtsklick → „Öffnen", sonst
-verweigert Gatekeeper den Start.
+Prebuilt versions live under **[Releases](../../releases)**.
 
-libusb ist statisch eingebunden, es wird also **kein Homebrew** benötigt, um die
-fertige App zu benutzen.
+The app is **ad-hoc signed** — it carries no Developer ID and is not notarised, so
+Gatekeeper will refuse it on first launch. Right-click the app and choose **Open**
+once, and macOS remembers the decision. If you would rather not trust a binary from
+a stranger, build it yourself; it takes one command and about a minute.
+
+libusb is linked statically, so the finished app does **not** need Homebrew.
 
 ---
 
-## Funktionen
+## Features
 
-- **Drag-and-drop** für `.nsp`, `.xci`, `.nsz` und `.xcz` — Ordner werden rekursiv
-  aufgelöst, Duplikate fallen raus
-- **Ehrlicher Fortschritt** mit Durchsatz und Restzeit, geglättet statt zappelnd
-- **Warteschlange** mit Zustand je Eintrag; scheitert eine Datei, endet die Sitzung
-  geordnet statt mit einem USB-Abriss
-- **Geräteerkennung** im Hintergrund — die App sieht, ob die Switch am Bus hängt
-- **Abbruch, der greift**, auch mitten in der Übertragung
-- **Liquid Glass** durchgehend, mit transparenter Titelleiste und Fenster, das sich
-  dem Inhalt anpasst
+- **Drag and drop** for `.nsp`, `.xci`, `.nsz` and `.xcz` — folders are expanded
+  recursively, duplicates are dropped
+- **Honest progress** with throughput and time remaining, smoothed rather than jittery
+- **Per-item queue state**; if a file fails, the session ends cleanly instead of
+  tearing down the USB connection
+- **Device detection** in the background — the app knows whether a Switch is attached
+- **Cancellation that actually works**, even mid-transfer
+- **Liquid Glass** throughout, with a transparent title bar and a window that
+  resizes to its content
 
-## Voraussetzungen
+## Requirements
 
 | | |
 |---|---|
-| macOS | 26.0 oder neuer (Apple Silicon) |
-| Switch | Custom Firmware mit [Atmosphère](https://github.com/Atmosphere-NX/Atmosphere) |
-| Konsolen-App | [Sphaira](https://github.com/ITotalJustice/sphaira) 1.0.0 oder neuer |
+| macOS | 26.0 or newer (Apple Silicon) |
+| Switch | Custom firmware with [Atmosphère](https://github.com/Atmosphere-NX/Atmosphere) |
+| Console app | [Sphaira](https://github.com/ITotalJustice/sphaira) 1.0.0 or newer |
 
-## Auf der Switch vorbereiten
+## Preparing the Switch
 
-Ohne diese drei Schritte passiert nichts, und die App kann das nicht für dich tun:
+Without these three steps nothing happens, and no host app can do them for you:
 
-1. **Optionen → Install Options → „Enable sysmmc"** einschalten. Installieren ist in
-   Sphaira ab Werk deaktiviert — das ist die häufigste Ursache dafür, dass scheinbar
-   gar nichts geschieht.
-2. **„Install location"** auf die SD-Karte stellen, falls die Titel nicht in den
-   internen Speicher sollen.
-3. **MTP ausschalten** und **USB Install starten**. MTP und USB-Installation belegen
-   dieselbe Schnittstelle und blockieren sich gegenseitig.
+1. Enable **Options → Install Options → "Enable sysmmc"**. Installing is switched
+   **off by default** in Sphaira. This is by far the most common reason people see
+   the console sit there doing nothing.
+2. Set **"Install location"** to the SD card unless you want titles in internal storage.
+3. **Turn MTP off** and start **USB Install**. MTP and USB installation claim the
+   same interface and block each other.
 
-Zeigt Sphaira „Warten auf USB Verbindung…", ist die Konsole bereit.
+Once Sphaira shows "waiting for USB connection…", the console is ready.
 
-## Bauen
+## Building
 
 ```bash
 brew install libusb
 open "Sphaira Connect.xcodeproj"
 ```
 
-libusb wird **statisch** gelinkt, die fertige App braucht Homebrew also nicht.
-Der Pfad steht in `OTHER_LDFLAGS`; auf Intel-Macs liegt die Bibliothek unter
-`/usr/local` statt `/opt/homebrew` und muss dort angepasst werden.
+libusb is linked **statically**, so the resulting app has no runtime dependency on
+Homebrew. The path lives in `OTHER_LDFLAGS`; on Intel Macs the library sits under
+`/usr/local` instead of `/opt/homebrew` and needs adjusting there.
 
-Tests laufen in einem eigenständigen SwiftPM-Paket, das die Kernlogik per Symlink
-einbindet:
+Tests live in a standalone SwiftPM package that pulls in the core sources via a symlink:
 
 ```bash
 cd SphairaCoreTests && swift test
 ```
 
-## Aufbau
+## Layout
 
 ```
 Sphaira Connect/
-  Core/        Reine Logik — Protokoll, CRC32C, Fortschritt, Dateiauswahl
-  USB/         libusb-Anbindung und Protokoll-Zustandsautomat
-  Shared/      Designsystem (Liquid Glass, Tokens, Fenstersteuerung)
-  Features/    Ansichtsmodell und SwiftUI-Oberfläche
+  Core/        Pure logic — protocol, CRC32C, progress, file scanning
+  USB/         libusb transport and the protocol state machine
+  Shared/      Design system (Liquid Glass, tokens, window handling)
+  Features/    View model and SwiftUI interface
 ```
 
-`Core/` hat bewusst weder SwiftUI- noch libusb-Abhängigkeit. Nur deshalb lässt sich
-die Protokoll- und Fortschrittslogik ohne Konsole und ohne Xcode-Testtarget prüfen.
+`Core/` deliberately depends on neither SwiftUI nor libusb. That is the only reason
+the protocol and progress logic can be tested without a console and without an
+Xcode test target.
 
-Ausführliche Dokumentation liegt im `.wiki/`-Ordner (lesbar mit dem `wiki`-CLI oder
-direkt als Markdown).
+Detailed documentation lives in the `.wiki/` folder as plain Markdown. **Note:** the
+wiki articles are written in German; the code, its comments and this README are the
+authoritative English reference.
 
-## Das Protokoll
+## The protocol
 
-Sphaira spricht ein eigenes, CRC32C-gesichertes Paketformat. Sechs 32-Bit-Werte,
-little-endian, das letzte Feld sichert die ersten fünf ab:
+Sphaira speaks a custom, CRC32C-protected packet format. Six 32-bit values,
+little-endian, where the last field protects the first five:
 
 ```
 magic ("SPH0") | arg2 | arg3 | arg4 | arg5 | crc32c
 ```
 
-Die Konsole fordert Datenbereiche aktiv an — auch quer über die Datei und nicht
-der Reihe nach. Wer daraus einen Fortschrittsbalken bauen will, darf deshalb
-**nicht** die höchste angefragte Position hochzählen: Bei einer XCI liest Sphaira
-früh Partitionsdaten nahe dem Dateiende, und der Balken stünde sofort auf 100 %.
-Gezählt werden die tatsächlich gesendeten Bytes.
+The console actively requests byte ranges, and it does so **out of order** — not
+sequentially from the start. Anyone building a progress bar on top of this must
+therefore not track the highest requested offset: with an XCI, Sphaira reads
+partition data near the end of the file almost immediately, which would peg the bar
+at 100 % within seconds. Count the bytes actually sent instead.
 
-Details stehen in `.wiki/articles/` und in `Core/SphairaProtocol.swift`.
+Details are in `.wiki/articles/` and in `Core/SphairaProtocol.swift`.
 
-## Bekannte Stolpersteine
+## Known pitfalls
 
-| Symptom | Ursache |
+| Symptom | Cause |
 |---|---|
-| „Zugriff verweigert" | NS-USBloader oder ein anderes Programm hält die USB-Schnittstelle noch |
-| Nichts passiert, Sphaira wartet ewig | „Enable sysmmc" ist aus, oder MTP läuft parallel |
-| Übertragung hängt am Anfang | Der Titel ist bereits installiert |
-| „Übertragung unvollständig" | Sphaira hat die Datei verworfen, meist wegen ungültigem Kopfsatz |
+| "Access denied" | NS-USBloader or another program still holds the USB interface |
+| Nothing happens, Sphaira waits forever | "Enable sysmmc" is off, or MTP is running in parallel |
+| Transfer stalls right at the start | The title is already installed |
+| "Transfer incomplete" / item marked skipped | Sphaira closed the file after a few kilobytes — usually because the title is already installed, otherwise because it rejected the file |
 
-Ausführlicher steht das in
-[`.wiki/articles/operations/troubleshooting.md`](.wiki/articles/operations/troubleshooting.md).
+That last one deserves a note: the two cases are **indistinguishable on the wire**.
+Sphaira sends the same close command whether it skips a duplicate or rejects a bad
+file, so the app reports what it can prove and names both possibilities rather than
+guessing.
 
-## Vergleich mit dem Python-Skript
+## Compared to the Python script
 
 | | `usb_install.py` | Sphaira Connect |
 |---|---|---|
-| Voraussetzung | Python, venv, pyusb | keine |
-| Eingabe | genau ein Pfad als Argument | Drag-and-drop, beliebig viele |
-| Fortschritt | keiner | zwei Balken, Durchsatz, Restzeit |
-| Abbruch | Strg-C wirkt verzögert | jederzeit |
-| Bereits installierter Titel | hängt kommentarlos | wird gemeldet |
-| Sprache | Englisch | Deutsch und Englisch |
+| Prerequisites | Python, venv, pyusb | none |
+| Input | exactly one path as an argument | drag and drop, any number |
+| Progress | none | two bars, throughput, time remaining |
+| Cancelling | Ctrl-C only takes effect after a delay | any time |
+| Already-installed title | hangs without a word | reported |
+| Languages | English | English and German |
 
-## Lizenz
+## License
 
-**GPL-3.0** — siehe [LICENSE](LICENSE).
+**GPL-3.0** — see [LICENSE](LICENSE).
 
-Das ist keine freie Wahl, sondern folgt aus den Abhängigkeiten. Die
-Protokollimplementierung ist aus `tools/usb_install.py` von
-[Sphaira](https://github.com/ITotalJustice/sphaira) (GPL-3.0) abgeleitet, und das
-statisch gelinkte [libusb](https://libusb.info) steht unter LGPL-2.1-or-later.
-GPL-3.0 ist mit beidem verträglich. [NS-USBloader](https://github.com/developersu/ns-usbloader)
-steht aus demselben Grund unter GPL-3.0.
+This is not a free choice but a consequence of the dependencies. The protocol
+implementation is derived from `tools/usb_install.py` in
+[Sphaira](https://github.com/ITotalJustice/sphaira) (GPL-3.0), and the statically
+linked [libusb](https://libusb.info) is LGPL-2.1-or-later. GPL-3.0 is compatible
+with both. [NS-USBloader](https://github.com/developersu/ns-usbloader) is GPL-3.0
+for the same reason.
 
-## Dank
+## Thanks
 
-- [ITotalJustice](https://github.com/ITotalJustice) für Sphaira und für `usb_install.py`,
-  ohne das die Protokollarbeit deutlich mühsamer gewesen wäre
-- [libusb](https://libusb.info) für den USB-Unterbau
-- [Atmosphère](https://github.com/Atmosphere-NX/Atmosphere) als Grundlage von allem
+- [ITotalJustice](https://github.com/ITotalJustice) for Sphaira and for
+  `usb_install.py`, without which working out the protocol would have been
+  considerably more painful
+- [libusb](https://libusb.info) for the USB plumbing
+- [Atmosphère](https://github.com/Atmosphere-NX/Atmosphere), on which all of this rests
 
-## Hinweis
+## Notice
 
-Sphaira Connect überträgt Dateien über USB. Was übertragen wird, verantwortest du
-selbst — sichere nur Software, die du besitzt, und beachte die Rechtslage in deinem
-Land. Das Projekt steht in keiner Verbindung zu Nintendo.
+Sphaira Connect transfers files over USB. What you transfer is your responsibility —
+only back up software you own, and mind the law where you live. This project is not
+affiliated with or endorsed by Nintendo.
