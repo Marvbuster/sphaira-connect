@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0"    stop-color="#2E86FF"/>
+      <stop offset="0.55" stop-color="#1552C8"/>
+      <stop offset="1"    stop-color="#0A2A73"/>
+    </linearGradient>
+  </defs>
+  <clipPath id="squircle">
+    <rect x="0" y="0" width="1024" height="1024" rx="228" ry="228"/>
+  </clipPath>
+  <g clip-path="url(#squircle)">
+    <rect width="1024" height="1024" fill="url(#sky)"/>
+    
+  <!-- Variante B — abstrakter Handheld mit einfahrendem Pfeil.
+       Bewusst reduziert und einfarbig: schlichtes Rechteck mit zwei Balken,
+       keine Joy-Con-Kontur, keine Neonfarben, keine Wortmarke. Damit bleibt
+       die Form generisch und trägt keine fremden Kennzeichen.
+       Vordergrundebene für Icon Composer: reine Fläche, keine Effekte. -->
+  <g fill="#FFFFFF">
+    <!-- Seitliche Griffe -->
+    <rect x="212" y="356" width="104" height="312" rx="52"/>
+    <rect x="708" y="356" width="104" height="312" rx="52"/>
+    <!-- Gehäuse mit ausgespartem Bildschirm -->
+    <path fill-rule="evenodd"
+          d="M 356 348
+             h 312
+             a 28 28 0 0 1 28 28
+             v 272
+             a 28 28 0 0 1 -28 28
+             h -312
+             a 28 28 0 0 1 -28 -28
+             v -272
+             a 28 28 0 0 1 28 -28 Z
+             M 372 404
+             v 216
+             h 280
+             v -216 Z"/>
+  </g>
+  <!-- Pfeil, fährt von oben in den Bildschirm -->
+  <path fill="#FFFFFF"
+        d="M 474 120
+           L 550 120
+           L 550 300
+           L 627 300
+           L 512 500
+           L 397 300
+           L 474 300 Z"/>
+
+
+  </g>
+</svg>

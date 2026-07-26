@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Variante A — Kugel mit einfahrendem Pfeil.
+       „Sphaira“ ist griechisch für Kugel, das Motiv kommt also aus dem Namen
+       der App. Der Ring ist oben geöffnet, der Pfeil fährt dort hinein.
+       Vordergrundebene für Icon Composer: reine Fläche, kein Schatten,
+       keine Verläufe — die Glasoptik legt Icon Composer darüber. -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="72" stroke-linecap="round">
+    <!-- Ring mit 60°-Lücke am Scheitel: von 300° im Uhrzeigersinn nach 240°,
+         also 300° Bogen. Beide Endpunkte liegen auf gleicher Höhe (y = 282.5). -->
+    <path d="M 644.5 282.5 A 265 265 0 1 1 379.5 282.5"/>
+  </g>
+  <!-- Pfeil: Schaft beginnt oberhalb des Rings und endet in der Kugelmitte -->
+  <path fill="#FFFFFF"
+        d="M 474 150
+           L 550 150
+           L 550 420
+           L 627 420
+           L 512 620
+           L 397 420
+           L 474 420 Z"/>
+</svg>

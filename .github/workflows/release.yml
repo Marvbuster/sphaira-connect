@@ -27,8 +27,8 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "number=${TAG#v}" >> "$GITHUB_OUTPUT"
 
-      - name: libusb installieren
-        run: brew install libusb
+      - name: Abhängigkeiten installieren
+        run: brew install libusb create-dmg
 
       - name: Kernlogik testen
         # Ein Release ohne grüne Tests gibt es nicht.
@@ -53,20 +53,44 @@ jobs:
           ZIP="Sphaira-Connect-${{ steps.version.outputs.number }}-arm64.zip"
           ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
 
-          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
-          echo "sha=$(shasum -a 256 "$ZIP" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          # DMG mit Fensterlayout und Verknüpfung auf den Programme-Ordner.
+          # create-dmg braucht ein Quellverzeichnis, das NUR die App enthält.
+          mkdir -p dmg-src && cp -R "$APP" dmg-src/
+          DMG="Sphaira-Connect-${{ steps.version.outputs.number }}-arm64.dmg"
+          create-dmg \
+            --volname "Sphaira Connect" \
+            --window-pos 200 120 --window-size 620 400 \
+            --icon-size 128 \
+            --icon "Sphaira Connect.app" 165 190 \
+            --app-drop-link 455 190 \
+            --no-internet-enable \
+            "$DMG" dmg-src/
 
-      - name: Verpacktes Bundle prüfen
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+          echo "dmg=$DMG" >> "$GITHUB_OUTPUT"
+          echo "sha_zip=$(shasum -a 256 "$ZIP" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "sha_dmg=$(shasum -a 256 "$DMG" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Verpackte Bundles prüfen
         run: |
+          # ZIP: entpacken und Signatur prüfen
           rm -rf verify && mkdir verify
           ditto -x -k "${{ steps.package.outputs.zip }}" verify
           codesign --verify --verbose=2 "verify/Sphaira Connect.app"
+
+          # DMG: einhängen und dieselbe Prüfung, damit nicht nur das ZIP getestet ist
+          hdiutil attach -nobrowse -quiet "${{ steps.package.outputs.dmg }}"
+          test -L "/Volumes/Sphaira Connect/Applications" || { echo "FEHLER: Verknüpfung zum Programme-Ordner fehlt."; exit 1; }
+          codesign --verify --verbose=2 "/Volumes/Sphaira Connect/Sphaira Connect.app"
+
           # Ad-hoc signiert heißt: keine Team-Kennung. Steht dort eine, ist
           # versehentlich ein Entwicklerkonto in den Build geraten.
-          if codesign -dv "verify/Sphaira Connect.app" 2>&1 | grep -q '^TeamIdentifier=[^n]'; then
+          if codesign -dv "/Volumes/Sphaira Connect/Sphaira Connect.app" 2>&1 | grep -q '^TeamIdentifier=[^n]'; then
+            hdiutil detach "/Volumes/Sphaira Connect" -quiet
             echo "FEHLER: Das Bundle trägt eine Apple-Team-Kennung."
             exit 1
           fi
+          hdiutil detach "/Volumes/Sphaira Connect" -quiet
 
       - name: Anmerkungen zusammenstellen
         id: notes
@@ -79,13 +103,15 @@ jobs:
             fi
             echo "## Installation"
             echo
-            echo "Entpacken, in den Programme-Ordner ziehen, beim ersten Start"
-            echo "Rechtsklick → **Öffnen**. Die App ist ad-hoc signiert und nicht"
-            echo "notarisiert, deshalb verweigert Gatekeeper sonst den Start."
+            echo "**DMG** öffnen und die App in den Programme-Ordner ziehen"
+            echo "(oder das ZIP entpacken). Beim ersten Start Rechtsklick →"
+            echo "**Öffnen**: Die App ist ad-hoc signiert und nicht notarisiert,"
+            echo "sonst verweigert Gatekeeper den Start."
             echo
-            echo "\`\`\`"
-            echo "SHA-256  ${{ steps.package.outputs.sha }}"
-            echo "\`\`\`"
+            echo "| Datei | SHA-256 |"
+            echo "|---|---|"
+            echo "| \`${{ steps.package.outputs.dmg }}\` | \`${{ steps.package.outputs.sha_dmg }}\` |"
+            echo "| \`${{ steps.package.outputs.zip }}\` | \`${{ steps.package.outputs.sha_zip }}\` |"
           } > RELEASE_NOTES.md
 
       - name: Veröffentlichen
@@ -93,6 +119,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${{ steps.version.outputs.tag }}" \
+            "${{ steps.package.outputs.dmg }}" \
             "${{ steps.package.outputs.zip }}" \
             --title "Sphaira Connect ${{ steps.version.outputs.number }}" \
             --notes-file RELEASE_NOTES.md
