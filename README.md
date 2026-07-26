@@ -10,12 +10,21 @@
 
 *[Deutsche Fassung](README.de.md)*
 
-Sphaira 1.0.0 replaced its Tinfoil-compatible USB protocol with a custom one
+Sphaira Connect covers two independent jobs around the Switch: installing titles
+to the homebrew app Sphaira over USB, and getting an unpatched console into custom
+firmware in the first place via RCM payload injection.
+
+Sphaira (the console app) replaced its Tinfoil-compatible USB protocol with a
+custom one in its own 1.0.0 release
 ([issue #249](https://github.com/ITotalJustice/sphaira/issues/249)). NS-USBloader,
 Fluffy and frhop stopped working with it, leaving the bundled Python script
-`tools/usb_install.py` as the only way to install over USB. Sphaira Connect is its
-native counterpart: a real macOS app with a queue, progress display and a log —
-no Python environment required.
+`tools/usb_install.py` as the only supported way to install over USB — until now.
+Sphaira Connect reimplements that protocol natively: a real macOS app with a queue,
+progress display and a log, no Python environment required.
+
+On top of that, v1.1 added a second, independent mode: manual RCM payload
+injection (Fusée Gelée) for unpatched Erista/V1 consoles, with built-in Hekate and
+Fusée presets that can fetch official releases straight from GitHub.
 
 <!-- Add screenshots here once available:
 <p align="center">

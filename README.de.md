@@ -10,12 +10,23 @@
 
 *[English version](README.md)*
 
-Sphaira hat mit Version 1.0.0 sein USB-Protokoll von Tinfoil auf ein eigenes
-umgestellt ([Issue #249](https://github.com/ITotalJustice/sphaira/issues/249)).
-Seitdem funktionieren NS-USBloader, Fluffy und frhop nicht mehr damit — der
-einzige verbliebene Weg war das mitgelieferte Python-Skript `tools/usb_install.py`.
-Sphaira Connect ist dessen native Entsprechung: eine echte macOS-App mit
-Warteschlange, Fortschrittsanzeige und Protokoll, ohne Python-Umgebung.
+Sphaira Connect deckt zwei unabhängige Aufgaben rund um die Switch ab: Titel per
+USB an die Homebrew-App Sphaira installieren, und eine ungepatchte Konsole per
+RCM-Payload-Injektion überhaupt erst ins Custom Firmware bringen.
+
+Sphaira (die Konsolen-App) hat mit der eigenen Version 1.0.0 ihr USB-Protokoll von
+Tinfoil auf ein eigenes umgestellt
+([Issue #249](https://github.com/ITotalJustice/sphaira/issues/249)). Seitdem
+funktionieren NS-USBloader, Fluffy und frhop nicht mehr damit — der einzige
+verbliebene Weg war das mitgelieferte Python-Skript `tools/usb_install.py` — bis
+jetzt. Sphaira Connect implementiert dieses Protokoll nativ nach: eine echte
+macOS-App mit Warteschlange, Fortschrittsanzeige und Protokoll, ohne
+Python-Umgebung.
+
+Seit v1.1 kommt ein zweiter, eigenständiger Modus dazu: manuelle
+RCM-Payload-Injektion (Fusée Gelée) für ungepatchte Erista/V1-Konsolen, mit
+eingebauten Hekate- und Fusée-Presets, die offizielle Releases direkt von GitHub
+laden können.
 
 ---
 
