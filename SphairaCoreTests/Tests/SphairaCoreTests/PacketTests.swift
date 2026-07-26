@@ -3,7 +3,7 @@ import Testing
 
 @Suite("Packet")
 struct PacketTests {
-    @Test("Konstanten laut Vertrag")
+    @Test("Constants per the contract")
     func constants() {
         #expect(Packet.magic == 0x5350_4830)
         #expect(Packet.byteCount == 24)
@@ -15,13 +15,13 @@ struct PacketTests {
         #expect(TransferFlags.stream == 1)
     }
 
-    @Test("encoded() liefert genau 24 Bytes")
+    @Test("encoded() yields exactly 24 bytes")
     func encodedLength() {
         #expect(Packet().encoded().count == 24)
         #expect(Packet(arg2: .max, arg3: .max, arg4: .max, arg5: .max).encoded().count == 24)
     }
 
-    @Test("Byteanordnung: sechs UInt32 little-endian, einzeln nachgerechnet")
+    @Test("Byte layout: six little-endian UInt32, verified word by word")
     func wireLayoutLittleEndian() {
         let packet = Packet(arg2: 0x0102_0304, arg3: 0xAABB_CCDD, arg4: 0x0000_0001, arg5: 0xFF00_00FF)
         let bytes = packet.encoded()
@@ -37,7 +37,7 @@ struct PacketTests {
         // arg5 0xFF0000FF → LE: FF 00 00 FF
         #expect(Array(bytes[16..<20]) == [0xFF, 0x00, 0x00, 0xFF])
 
-        // CRC32C über die ersten 20 Bytes, ebenfalls little-endian
+        // CRC32C over the first 20 bytes, little-endian as well
         let crc = CRC32C.checksum(bytes.prefix(20))
         #expect(bytes[20] == UInt8(crc & 0xFF))
         #expect(bytes[21] == UInt8((crc >> 8) & 0xFF))
@@ -45,7 +45,7 @@ struct PacketTests {
         #expect(bytes[23] == UInt8((crc >> 24) & 0xFF))
     }
 
-    @Test("Hin- und Rückumwandlung für Zufallswerte")
+    @Test("Round-trip for random values")
     func roundTripRandom() throws {
         for _ in 0..<200 {
             let original = Packet(
@@ -59,7 +59,7 @@ struct PacketTests {
         }
     }
 
-    @Test("Hin- und Rückumwandlung für Grenzwerte")
+    @Test("Round-trip for edge values")
     func roundTripEdges() throws {
         for value: UInt32 in [0, 1, 0x7FFF_FFFF, 0x8000_0000, .max] {
             let packet = Packet(arg2: value, arg3: value, arg4: value, arg5: value)
@@ -67,7 +67,7 @@ struct PacketTests {
         }
     }
 
-    @Test("Abgeleitete Felder: command, dataSize, dataOffset")
+    @Test("Derived fields: command, dataSize, dataOffset")
     func derivedFields() {
         let packet = Packet(arg2: 7, arg3: 9, arg4: 42, arg5: 0)
         #expect(packet.command == 7)
@@ -75,7 +75,7 @@ struct PacketTests {
         #expect(packet.dataOffset == (UInt64(7) << 32 | 9))
     }
 
-    @Test("dataOffset jenseits der 4-GB-Grenze")
+    @Test("dataOffset beyond the 4 GB boundary")
     func dataOffsetBeyond4GB() {
         #expect(Packet(arg2: 1, arg3: 0).dataOffset == 4_294_967_296)
         #expect(Packet(arg2: 1, arg3: 1).dataOffset == 4_294_967_297)
@@ -83,19 +83,19 @@ struct PacketTests {
         #expect(Packet(arg2: 0, arg3: .max).dataOffset == 4_294_967_295)
     }
 
-    @Test("Jedes einzelne gekippte Byte lässt decode werfen")
+    @Test("Every single flipped byte makes decode throw")
     func everyFlippedByteThrows() {
         let bytes = Packet(arg2: 0xDEAD_BEEF, arg3: 0x0102_0304, arg4: 55, arg5: 0xCAFE_F00D).encoded()
         for index in 0..<Packet.byteCount {
             var mutated = bytes
             mutated[index] ^= 0xFF
-            #expect(throws: InstallError.self, "Byte \(index) gekippt") {
+            #expect(throws: InstallError.self, "byte \(index) flipped") {
                 _ = try Packet.decode(mutated)
             }
         }
     }
 
-    @Test("Gekippte Magic-Bytes ergeben badMagic, Nutzdaten-Bytes checksumMismatch")
+    @Test("Flipped magic bytes yield badMagic, payload bytes checksumMismatch")
     func flipErrorKinds() {
         let bytes = Packet(arg2: 1, arg3: 2, arg4: 3, arg5: 4).encoded()
         for index in 0..<4 {
@@ -110,19 +110,19 @@ struct PacketTests {
         }
     }
 
-    @Test("Falsche Magic ergibt badMagic — auch mit passend nachgerechneter CRC")
+    @Test("A wrong magic yields badMagic — even with a matching recomputed CRC")
     func wrongMagicWithValidCRC() {
         var bytes = Packet(arg2: 1).encoded()
-        bytes[3] = 0x54 // Magic verändern …
+        bytes[3] = 0x54 // alter the magic …
         let crc = CRC32C.checksum(bytes.prefix(20))
-        bytes[20] = UInt8(crc & 0xFF) // … und die CRC dazu passend machen
+        bytes[20] = UInt8(crc & 0xFF) // … and make the CRC match it
         bytes[21] = UInt8((crc >> 8) & 0xFF)
         bytes[22] = UInt8((crc >> 16) & 0xFF)
         bytes[23] = UInt8((crc >> 24) & 0xFF)
         #expect(throws: InstallError.badMagic) { _ = try Packet.decode(bytes) }
     }
 
-    @Test("23 und 25 Bytes ergeben shortPacket")
+    @Test("23 and 25 bytes yield shortPacket")
     func wrongLengthThrowsShortPacket() {
         let valid = Packet(arg2: 9).encoded()
         #expect(throws: InstallError.shortPacket(expected: 24, got: 23)) {
@@ -136,9 +136,9 @@ struct PacketTests {
         }
     }
 
-    @Test("Prüfreihenfolge: Länge vor Magic")
+    @Test("Validation order: length before magic")
     func lengthCheckedBeforeMagic() {
-        // Zu kurz UND falsche Magic → die Länge muss zuerst gemeldet werden.
+        // Too short AND wrong magic → the length must be reported first.
         #expect(throws: InstallError.shortPacket(expected: 24, got: 4)) {
             _ = try Packet.decode([0xFF, 0xFF, 0xFF, 0xFF])
         }

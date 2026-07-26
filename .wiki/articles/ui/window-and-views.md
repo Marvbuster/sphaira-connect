@@ -1,9 +1,9 @@
 ---
-title: "Fenster und Ansichten — RootView, WindowStyleConfigurator und die View-Bausteine"
+title: "Window and Views — RootView, WindowStyleConfigurator and the View Building Blocks"
 created: 2026-07-26
 updated: 2026-07-26
 category: ui
-tags: [swiftui, appkit, nswindow, rootview, ansichten, layout]
+tags: [swiftui, appkit, nswindow, rootview, views, layout]
 status: current
 related:
   - ui/design-system-liquid-glass
@@ -20,11 +20,11 @@ code_refs:
   - Sphaira Connect/Features/Views/LogConsoleView.swift
 ---
 
-# Fenster und Ansichten
+# Window and Views
 
-Die Oberfläche hat keine Navigation, keine Tabs und keinen zweiten Bildschirm — sie ist **ein** Fenster, das seine Größe dem Inhalt anpasst und seine Grundfarbe der Phase der Übertragung. Der Zusammenbau steckt vollständig in `RootView`; das Fenster selbst wird von `WindowStyleConfigurator` konfiguriert, einem `NSViewRepresentable` ohne sichtbaren Inhalt. Die fünf Bausteine darunter (Ablage, Warteschlange, Fortschritt, Protokoll, Statusanzeige) sind reine Darstellungen: Sie bekommen Werte herein und geben Aktionen als Closures heraus.
+The interface has no navigation, no tabs and no second screen — it is **one** window that fits its size to the content and its base color to the phase of the transfer. The assembly lives entirely in `RootView`; the window itself is configured by `WindowStyleConfigurator`, an `NSViewRepresentable` with no visible content. The five building blocks below it (drop zone, queue, progress, log, status indicator) are pure presentation: they take values in and hand actions back out as closures.
 
-## RootView — der ZStack
+## RootView — the ZStack
 
 ```swift
 ZStack {
@@ -39,18 +39,18 @@ ZStack {
         .padding(.top, Spacing.md)
         .padding(.bottom, Spacing.lg)
 
-    // Konfiguriert das NSWindow und lässt es dem Inhalt animiert folgen.
+    // Configures the NSWindow and makes it follow the content with an animation.
     WindowStyleConfigurator(sizeKey: sizeKey)
         .allowsHitTesting(false)
         .frame(width: 0, height: 0)
 }
 ```
 
-Vier Ebenen von unten nach oben: Schreibtisch-Unschärfe, Zustandsfarbe, Inhalt, Fensterkonfiguration. Die Bausteine der ersten beiden Ebenen sind in [[ui/design-system-liquid-glass]] beschrieben.
+Four layers from bottom to top: desktop blur, state color, content, window configuration. The building blocks of the first two layers are described in [[ui/design-system-liquid-glass]].
 
-`WindowStyleConfigurator` liegt als 0×0-Ansicht mit abgeschaltetem Hit-Testing im Stapel. Das ist der übliche Weg, in SwiftUI an das umgebende `NSWindow` zu kommen, ohne die Ansichtshierarchie zu verändern.
+`WindowStyleConfigurator` sits in the stack as a 0×0 view with hit testing switched off. That is the usual way to reach the surrounding `NSWindow` from SwiftUI without changing the view hierarchy.
 
-Die Zustandsfarbe kommt aus einer einzigen berechneten Eigenschaft:
+The state color comes from a single computed property:
 
 ```swift
 private var backgroundTint: Color {
@@ -62,11 +62,11 @@ private var backgroundTint: Color {
 }
 ```
 
-Bemerkenswert: `.finished` bekommt wieder das ruhige Blau, nicht das Grün. Das Grün signalisiert **Aktivität**, nicht Erfolg — für den Erfolg gibt es die Fußnote in der Aktionsleiste und den grünen Haken im Fortschrittspanel. `.waitingForSwitch` teilt sich die Farbe mit `.transferring`, weil das Warten aus Sicht des Benutzers schon zur laufenden Übertragung gehört.
+Note that `.finished` gets the calm blue back, not the green. The green signals **activity**, not success — for success there is the footnote in the action bar and the green check mark in the progress panel. `.waitingForSwitch` shares its color with `.transferring`, because from the user's point of view the waiting is already part of the running transfer.
 
-## Kopfzeile und Statusanzeige als Overlays
+## Header and status indicator as overlays
 
-Weil die Titelleiste transparent ist und der Inhalt bis unter sie reicht, liegen Titel und Statusanzeige nicht im Inhaltsstapel, sondern als Overlays mit negativem Versatz in der Titelleisten-Zone:
+Because the title bar is transparent and the content reaches up underneath it, the title and the status indicator do not live in the content stack but as overlays with a negative offset in the title-bar zone:
 
 ```swift
 .overlay(alignment: .topLeading) {
@@ -85,11 +85,11 @@ Weil die Titelleiste transparent ist und der Inhalt bis unter sie reicht, liegen
 }
 ```
 
-Die `padding(.leading, 80)` hält Abstand zu den Ampelknöpfen, die `WindowStyleConfigurator` bewusst sichtbar lässt. Der Titel ist `accessibilityHidden` — er ist Dekoration, der Fenstername steht ohnehin in der Fensterliste.
+The `padding(.leading, 80)` keeps clear of the traffic-light buttons, which `WindowStyleConfigurator` deliberately leaves visible. The title is `accessibilityHidden` — it is decoration, and the window name is in the window list anyway.
 
-`StatusPill` zeigt einen Punkt plus Text und wechselt animiert (`.easeInOut(duration: 0.35)`) zwischen Grün (verbunden, mit Leuchtschein über `shadow`) und weiß-transparent (nicht verbunden). Der Text ist dreistufig: die Gerätezusammenfassung aus der laufenden Sitzung, sonst „Switch verbunden", sonst „Keine Switch". Für Hilfstechnik fasst `accessibilityLabel("Verbindungsstatus: \(text)")` beides zusammen.
+`StatusPill` shows a dot plus text and switches with an animation (`.easeInOut(duration: 0.35)`) between green (connected, with a glow via `shadow`) and translucent white (not connected). The text has three tiers: the device summary from the running session, otherwise "Switch verbunden", otherwise "Keine Switch". For assistive technology, `accessibilityLabel("Verbindungsstatus: \(text)")` combines both.
 
-## Der sizeKey
+## The sizeKey
 
 ```swift
 private var sizeKey: String {
@@ -97,9 +97,9 @@ private var sizeKey: String {
 }
 ```
 
-Das ist der Auslöser für die Fensteranpassung: genau die vier Zustände, die die Höhe des Inhalts verändern. Die Zeichenkette selbst ist bedeutungslos — nur ihre **Änderung** zählt. Bewusst nicht enthalten sind Fortschrittswerte, Protokollzeilen und Phasenwechsel ohne Layoutfolge; sonst würde das Fenster während der Übertragung mehrmals pro Sekunde nachzumessen versuchen.
+This is the trigger for resizing the window: exactly the four states that change the height of the content. The string itself is meaningless — only its **change** counts. Deliberately not included are progress values, log lines and phase changes without layout consequences; otherwise the window would try to re-measure itself several times per second during a transfer.
 
-## Der Inhalt und seine Übergänge
+## The content and its transitions
 
 ```swift
 if model.items.isEmpty {
@@ -115,9 +115,9 @@ if model.items.isEmpty {
 }
 ```
 
-Die Ablagefläche existiert in beiden Zuständen — leer als große Fläche (230 pt hoch), gefüllt als schmale Zeile (44 pt) unter der Liste. Danach folgen bedingt die Wartezeile (`ProgressView` plus Hinweistext, nur bei `.waitingForSwitch`), das Fortschrittspanel, das Protokoll und die Aktionsleiste.
+The drop zone exists in both states — empty as a large area (230 pt tall), filled as a narrow strip (44 pt) below the list. After that come, conditionally, the waiting row (`ProgressView` plus a hint text, only for `.waitingForSwitch`), the progress panel, the log and the action bar.
 
-Ob das Fortschrittspanel erscheint, entscheidet:
+Whether the progress panel appears is decided by:
 
 ```swift
 private var showsProgress: Bool {
@@ -128,29 +128,29 @@ private var showsProgress: Bool {
 }
 ```
 
-`.finished` ist absichtlich dabei: Der letzte Stand bleibt nach dem Ende stehen, statt weggeblendet zu werden. Bei `.failed` und nach einem Abbruch verschwindet das Panel — dort setzt `InstallerModel` `progress` auf `nil`.
+`.finished` is included on purpose: the final state stays on screen after the end instead of being faded out. For `.failed` and after a cancellation the panel disappears — there `InstallerModel` sets `progress` to `nil`.
 
-Drei Animationen liegen am `content`-Block und nicht an den Einzelteilen: `items.isEmpty`, `showsProgress` und `phase`. Damit läuft der Wechsel zwischen Ablage und Liste als **eine** Bewegung ab.
+Three animations are attached to the `content` block rather than to the individual parts: `items.isEmpty`, `showsProgress` and `phase`. This makes the switch between drop zone and list run as **one** movement.
 
-## Aktionsleiste
+## Action bar
 
-Drei Knöpfe, jeder mit einer eigenen Regel:
+Three buttons, each with its own rule:
 
-| Knopf | Art | Aktiv, wenn |
+| Button | Kind | Enabled when |
 |---|---|---|
-| Liste leeren | `.clear` | Einträge vorhanden **und** nicht beschäftigt |
-| Abbrechen | `.red` | nur sichtbar, wenn `model.isBusy` |
-| Installieren | `.green` | `model.canStart` |
+| `Liste leeren` (clear list) | `.clear` | entries present **and** not busy |
+| `Abbrechen` (cancel) | `.red` | only visible while `model.isBusy` |
+| `Installieren` (install) | `.green` | `model.canStart` |
 
-„Abbrechen" wird nicht gesperrt, sondern ein- und ausgeblendet (`.transition(.opacity.combined(with: .scale(scale: 0.9)))`). Links daneben steht die Fußnote: bei `.failed` die Fehlermeldung in Rot (auf zwei Zeilen begrenzt), bei `.finished` die Anzahl übertragener Titel in Grün, sonst nichts.
+"Abbrechen" is not disabled but faded in and out (`.transition(.opacity.combined(with: .scale(scale: 0.9)))`). To its left sits the footnote: for `.failed` the error message in red (limited to two lines), for `.finished` the number of transferred titles in green, otherwise nothing.
 
-Alle drei tragen ein `accessibilityLabel`, das aussagekräftiger ist als die Beschriftung („Übertragung zur Switch starten" statt „Installieren").
+All three carry an `accessibilityLabel` that is more meaningful than the visible caption ("Übertragung zur Switch starten" instead of "Installieren").
 
 ## WindowStyleConfigurator
 
-Das `NSViewRepresentable` erzeugt eine private `ConfigView`, die drei Dinge tut.
+The `NSViewRepresentable` creates a private `ConfigView` that does three things.
 
-**1. Titelleiste transparent machen** — beim ersten `viewDidMoveToWindow`:
+**1. Make the title bar transparent** — on the first `viewDidMoveToWindow`:
 
 ```swift
 window.titleVisibility = .hidden
@@ -161,13 +161,13 @@ window.styleMask.insert(.fullSizeContentView)
 window.isMovableByWindowBackground = true
 ```
 
-`isOpaque = false` und `backgroundColor = .clear` sind die Voraussetzung dafür, dass `VisualEffectBlur` den Schreibtisch überhaupt durchscheinen lassen kann. `fullSizeContentView` zieht den Inhalt unter die Titelleiste — erst dadurch funktionieren die Overlays oben. Die Ampelknöpfe werden ausdrücklich wieder sichtbar gesetzt.
+`isOpaque = false` and `backgroundColor = .clear` are the prerequisite for `VisualEffectBlur` being able to let the desktop show through at all. `fullSizeContentView` pulls the content up underneath the title bar — only then do the overlays above work. The traffic-light buttons are explicitly set visible again.
 
-**2. Die Rahmenpersistenz abschalten:**
+**2. Switch off frame persistence:**
 
 ```swift
-// AppKit stellt beim Start den zuletzt gesicherten Rahmen wieder her —
-// Persistenz abschalten und einmal an den Inhalt anpassen.
+// At launch AppKit restores the last saved frame — switch persistence
+// off and fit to the content once.
 window.setFrameAutosaveName("")
 window.isRestorable = false
 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
@@ -175,9 +175,9 @@ DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
 }
 ```
 
-Ohne diese drei Zeilen startet die App in der Größe, die sie beim letzten Beenden hatte — typischerweise mit ausgeklappter Liste und offenem Protokoll, obwohl beim Start nur die leere Ablagefläche zu sehen ist. Der Fall ist in [[operations/troubleshooting]] beschrieben.
+Without these three lines the app starts at the size it had when it was last quit — typically with an expanded list and an open log, even though at launch only the empty drop zone is on screen. The case is described in [[operations/troubleshooting]].
 
-**3. Dem Inhalt folgen** — `refitIfNeeded(key:)` merkt sich den letzten `sizeKey`:
+**3. Follow the content** — `refitIfNeeded(key:)` remembers the last `sizeKey`:
 
 ```swift
 guard let previous = lastKey else {
@@ -186,19 +186,19 @@ guard let previous = lastKey else {
 }
 guard previous != key else { return }
 lastKey = key
-// Erst SwiftUI das neue Layout festschreiben lassen, dann anpassen.
+// Let SwiftUI settle the new layout first, then resize.
 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
     self?.fitWindowToContent()
 }
 ```
 
-Der erste Aufruf setzt nur den Schlüssel und passt **nicht** an — sonst würde die Anpassung aus `viewDidMoveToWindow` doppelt laufen. Die 0,1 Sekunden Verzögerung sind nötig, weil `updateNSView` läuft, bevor SwiftUI das neue Layout fertig gerechnet hat; ein sofortiges Messen liefert die alte Größe.
+The first call only sets the key and does **not** resize — otherwise the fit from `viewDidMoveToWindow` would run twice. The 0.1 second delay is necessary because `updateNSView` runs before SwiftUI has finished computing the new layout; measuring immediately returns the old size.
 
-Die Messung selbst:
+The measurement itself:
 
 ```swift
-// NSHostingView meldet die SwiftUI-Idealgröße über intrinsicContentSize;
-// fittingSize kann stillschweigend Null liefern.
+// NSHostingView reports the SwiftUI ideal size via intrinsicContentSize;
+// fittingSize can silently return zero.
 var fitting = content.intrinsicContentSize
 if fitting.width <= 100 || fitting.height <= 100 {
     fitting = content.fittingSize
@@ -206,37 +206,37 @@ if fitting.width <= 100 || fitting.height <= 100 {
 guard fitting.width > 100, fitting.height > 100 else { return }
 var frame = window.frameRect(forContentRect: NSRect(origin: .zero, size: fitting))
 let old = window.frame
-frame.origin = NSPoint(x: old.origin.x, y: old.maxY - frame.height) // obere linke Ecke halten
+frame.origin = NSPoint(x: old.origin.x, y: old.maxY - frame.height) // keep the top left corner
 window.setFrame(frame, display: true, animate: true)
 ```
 
-Drei Fallstricke stecken hier drin: `fittingSize` liefert bei `NSHostingView` unter Umständen kommentarlos Null (deshalb `intrinsicContentSize` zuerst), unplausible Werte unter 100 pt werden verworfen statt angewendet (sonst schrumpft das Fenster auf Briefmarkengröße), und der Ursprung wird auf die **obere linke** Ecke umgerechnet, weil macOS-Koordinaten unten links beginnen — ohne diese Zeile würde das Fenster beim Wachsen nach oben statt nach unten aufgehen.
+Three pitfalls are baked in here: with `NSHostingView`, `fittingSize` may silently return zero (hence `intrinsicContentSize` first), implausible values below 100 pt are discarded rather than applied (otherwise the window shrinks to postage-stamp size), and the origin is recomputed against the **top left** corner, because macOS coordinates start at the bottom left — without that line the window would grow upwards instead of downwards.
 
-Die Mindestbreite kommt nicht von hier, sondern aus `RootView`: `.frame(minWidth: 560)`.
+The minimum width does not come from here but from `RootView`: `.frame(minWidth: 560)`.
 
-## Die Bausteine
+## The building blocks
 
 ### DropZoneView
 
-Ein `Button` mit `.buttonStyle(.plain)`, gestrichelter Umrandung und `.onDrop(of: [.fileURL], isTargeted:)`. Beim Überfahren wird deutlich quittiert: Akzentfarbe statt Weiß, Strichstärke 2 statt 1,5, `scaleEffect(1.015)`, Symbolwechsel per `.contentTransition(.symbolEffect(.replace))`.
+A `Button` with `.buttonStyle(.plain)`, a dashed border and `.onDrop(of: [.fileURL], isTargeted:)`. Hovering is acknowledged clearly: accent color instead of white, stroke width 2 instead of 1.5, `scaleEffect(1.015)`, symbol change via `.contentTransition(.symbolEffect(.replace))`.
 
-Beim Ablegen ist ein Detail wichtig:
+One detail matters when dropping:
 
 ```swift
 _ = provider.loadObject(ofClass: URL.self) { url, _ in
     guard let url else { return }
-    // Der Provider liefert auf einer beliebigen Queue — zurück auf den MainActor.
+    // The provider delivers on an arbitrary queue — hop back to the MainActor.
     Task { @MainActor in deliver([url]) }
 }
 ```
 
-`NSItemProvider` ruft seinen Abschlussblock auf einer beliebigen Warteschlange auf; `onURLs` schreibt aber in das `@Observable`-Modell. Der Sprung auf den MainActor ist Pflicht, nicht Höflichkeit. Nebenwirkung: Jede abgelegte URL kommt einzeln an, `InstallerModel.add(urls:)` wird also pro Datei einmal aufgerufen und muss selbst gegen Duplikate schützen — was es tut.
+`NSItemProvider` calls its completion block on an arbitrary queue, but `onURLs` writes into the `@Observable` model. Hopping to the MainActor is mandatory, not politeness. A side effect: every dropped URL arrives individually, so `InstallerModel.add(urls:)` is called once per file and has to guard against duplicates itself — which it does.
 
-Der Klickpfad geht über `NSOpenPanel` mit `canChooseDirectories = true` und `allowsMultipleSelection = true`; die Auflösung der Ordner übernimmt danach `ItemScanner` — siehe [[architecture/queue-and-file-scanning]].
+The click path goes through `NSOpenPanel` with `canChooseDirectories = true` and `allowsMultipleSelection = true`; resolving the folders is then handled by `ItemScanner` — see [[architecture/queue-and-file-scanning]].
 
 ### QueueListView
 
-Die Liste rechnet ihre Höhe selbst aus, statt sie SwiftUI zu überlassen:
+The list computes its own height instead of leaving it to SwiftUI:
 
 ```swift
 private var listHeight: CGFloat {
@@ -246,34 +246,34 @@ private var listHeight: CGFloat {
 }
 ```
 
-Bei `rowHeight` 40, `rowSpacing` 2 und `maxListHeight` 320 wächst das Fenster also bis etwa acht Einträge mit und deckelt danach. Genau deswegen steht `items.count` im `sizeKey`.
+With `rowHeight` 40, `rowSpacing` 2 and `maxListHeight` 320, the window therefore grows along up to about eight entries and caps after that. This is exactly why `items.count` is part of the `sizeKey`.
 
-Jede Zeile zeigt Zustandssymbol (gepunkteter Kreis / Spinner / grüner Haken / rotes Warndreieck), Namen mit `truncationMode(.middle)`, bei Fehlern die Ursache in Rot darunter, die Größe in Monospace und den Entfernen-Knopf. Der laufende Eintrag wird mit `Colors.accent.opacity(0.22)` hinterlegt. Der Entfernen-Knopf ist während der Übertragung gesperrt und auf 0,25 Deckkraft gedimmt.
+Every row shows a state symbol (dotted circle / spinner / green check mark / red warning triangle), the name with `truncationMode(.middle)`, on errors the cause in red underneath, the size in monospace and the remove button. The entry currently being transferred is backed with `Colors.accent.opacity(0.22)`. The remove button is disabled during the transfer and dimmed to 0.25 opacity.
 
 ### ProgressPanelView
 
-Zwei Balken (Gesamt in Akzentfarbe, aktuelle Datei in Grün), Kopfzeile mit „x von y", darunter Geschwindigkeit, Restzeit und übertragene von Gesamtgröße — alles in Monospace, damit die Zahlen beim Zählen nicht springen.
+Two bars (overall in the accent color, current file in green), a header with "x von y", below it speed, remaining time and transferred-of-total size — all in monospace so the numbers do not jitter as they count.
 
-`isFinished` greift an drei Stellen ein: Beide Anteile werden auf `1` gesetzt, die Geschwindigkeit auf `ByteFormat.rate(.nan)` (also „–") und die Restzeit ebenfalls. Damit bleibt nach dem Ende ein sauberer Endstand stehen statt eines eingefrorenen Zwischenwerts.
+`isFinished` intervenes in three places: both fractions are set to `1`, the speed to `ByteFormat.rate(.nan)` (i.e. "–") and the remaining time likewise. That leaves a clean final state after the end instead of a frozen intermediate value.
 
-Der Balken hat eine Untergrenze:
+The bar has a lower bound:
 
 ```swift
 Capsule()
     .fill(tint.gradient)
-    // Mindestbreite = Höhe, damit die Kapsel nie zum Strich kollabiert.
+    // Minimum width = height, so the capsule never collapses into a line.
     .frame(width: max(height, geo.size.width * fraction))
 ```
 
-Bei 0 % wäre eine Kapsel mit Breite 0 sonst ein optischer Fehler.
+At 0 % a capsule with width 0 would otherwise be a visual glitch.
 
-Die Zählung ist gegen Ausreißer abgesichert: `min(progress.itemIndex + 1, max(totalCount, 1))` und `max(totalCount, 1)` verhindern „3 von 2" und „1 von 0".
+The counting is guarded against outliers: `min(progress.itemIndex + 1, max(totalCount, 1))` and `max(totalCount, 1)` prevent "3 von 2" and "1 von 0".
 
 ### LogConsoleView
 
-Ein `DisclosureGroup` mit animierter Bindung (`$isExpanded.animation(.snappy(duration: 0.3))`), darin ein 150 pt hoher `ScrollView` in Monospace. Jede Zeile trägt einen Zeitstempel (`hour(.twoDigits(amPM: .omitted))`, Minute, Sekunde) in tertiärer Farbe und den Text in sekundärer, mit `.textSelection(.enabled)` zum Kopieren.
+A `DisclosureGroup` with an animated binding (`$isExpanded.animation(.snappy(duration: 0.3))`), containing a 150 pt tall `ScrollView` in monospace. Every line carries a timestamp (`hour(.twoDigits(amPM: .omitted))`, minute, second) in tertiary color and the text in secondary, with `.textSelection(.enabled)` for copying.
 
-Das automatische Scrollen hängt an der Zeilenzahl, nicht am Inhalt:
+Auto-scrolling hangs off the line count, not the content:
 
 ```swift
 .onChange(of: lines.count) {
@@ -284,4 +284,4 @@ Das automatische Scrollen hängt an der Zeilenzahl, nicht am Inhalt:
 }
 ```
 
-Zusätzlich springt `onAppear` ans Ende — sonst stünde das Protokoll beim Aufklappen am Anfang, obwohl die interessanten Zeilen unten liegen. Der leere Zustand hat einen eigenen Zweig („Noch keine Einträge."), damit die Karte nicht als leere Fläche erscheint.
+In addition, `onAppear` jumps to the end — otherwise the log would sit at the top when expanded, even though the interesting lines are at the bottom. The empty state has its own branch ("Noch keine Einträge.") so that the card does not appear as a blank area.

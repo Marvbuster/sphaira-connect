@@ -2,16 +2,16 @@
 //  InstallerModel.swift
 //  Sphaira Connect
 //
-//  Ansichtsmodell: hält den UI-Zustand auf dem MainActor und spiegelt
-//  Rückmeldungen der im Hintergrund laufenden InstallSession zurück.
+//  View model: keeps the UI state on the MainActor and mirrors back the
+//  callbacks of the InstallSession running in the background.
 //
 
 import Foundation
 import Observation
 
-/// Abbruch-Flag mit atomarem Zugriff. Wird aus dem cancel-Closure der Sitzung
-/// gelesen — der darf niemals auf MainActor-Zustand warten, sonst blockiert
-/// der USB-Thread gegen den Hauptthread.
+/// Cancellation flag with atomic access. Read from the session's cancel closure —
+/// which must never wait on MainActor state, otherwise the USB thread deadlocks
+/// against the main thread.
 fileprivate nonisolated final class CancelFlag: @unchecked Sendable {
     private let lock = NSLock()
     private var flag = false
@@ -29,8 +29,8 @@ fileprivate nonisolated final class CancelFlag: @unchecked Sendable {
     }
 }
 
-/// Zählt fertig übertragene Dateien auf dem Sitzungs-Thread, damit das
-/// Endergebnis nicht von der Reihenfolge unstrukturierter Tasks abhängt.
+/// Counts completed files on the session thread so the final result does not
+/// depend on the ordering of unstructured tasks.
 fileprivate nonisolated final class DoneCounter: @unchecked Sendable {
     private let lock = NSLock()
     private var count = 0
@@ -48,9 +48,9 @@ fileprivate nonisolated final class DoneCounter: @unchecked Sendable {
     }
 }
 
-/// Rückmeldungen der Sitzung. Sie laufen durch genau einen geordneten Kanal,
-/// damit Fortschritt und Protokollzeilen nicht vertauscht ankommen — einzelne
-/// unstrukturierte Tasks garantieren keine Reihenfolge.
+/// Callbacks from the session. They travel through exactly one ordered channel
+/// so progress and log lines cannot arrive out of order — individual
+/// unstructured tasks guarantee no ordering.
 fileprivate enum SessionEvent: Sendable {
     case log(String)
     case device(USBTransport.DeviceInfo)
@@ -103,7 +103,7 @@ final class InstallerModel {
         phase == .waitingForSwitch || phase == .transferring
     }
 
-    // MARK: - Warteschlange
+    // MARK: - Queue
 
     func add(urls: [URL]) {
         let existing = Set(items.map { $0.url.standardizedFileURL.path })
@@ -127,7 +127,7 @@ final class InstallerModel {
         if phase != .idle { phase = .idle }
     }
 
-    // MARK: - Übertragung
+    // MARK: - Transfer
 
     func start() {
         guard canStart else { return }
@@ -155,18 +155,18 @@ final class InstallerModel {
             for await event in stream {
                 self?.apply(event)
             }
-            // Der Strom ist zu Ende, ohne dass ein Abschlussereignis kam.
-            // Ohne diesen Rückfall bliebe die Oberfläche auf „läuft" stehen
-            // und „Abbrechen" aktiv, obwohl nichts mehr passiert.
+            // The stream ended without a terminal event arriving. Without this
+            // fallback the UI would stay stuck on "in progress" with "Cancel"
+            // still enabled, even though nothing is happening any more.
             guard let self, self.isBusy else { return }
             self.progress = nil
             self.phase = .idle
             self.appendLog(String(localized: "Sitzung ohne Abschlussmeldung beendet."))
         }
 
-        // Die Sitzung selbst hält keine Referenz auf das Modell — sie schreibt
-        // nur in den Kanal. Damit gibt es keinen Zyklus und keinen Zugriff auf
-        // MainActor-Zustand aus dem USB-Thread heraus.
+        // The session itself holds no reference to the model — it only writes to
+        // the channel. That avoids a retain cycle and any access to MainActor
+        // state from the USB thread.
         Task.detached(priority: .userInitiated) {
             defer { continuation.finish() }
             do {
@@ -198,8 +198,8 @@ final class InstallerModel {
         case .device(let info):
             deviceSummary = "\(info.product) · \(info.serial)"
             phase = .transferring
-            // info.product enthält bereits „Nintendo Switch" — den Hersteller
-            // davorzusetzen ergäbe „Nintendo Nintendo Switch".
+            // info.product already contains "Nintendo Switch" — prefixing the
+            // manufacturer would produce "Nintendo Nintendo Switch".
             appendLog(String(localized: "Verbunden: \(info.product) (Seriennummer \(info.serial))"))
 
         case .progress(let value):
@@ -232,14 +232,14 @@ final class InstallerModel {
         appendLog(String(localized: "Abbruch angefordert …"))
     }
 
-    // MARK: - Geräteüberwachung
+    // MARK: - Device monitoring
 
     func startMonitoring() {
         guard monitorTask == nil else { return }
         monitorTask = Task {
             while !Task.isCancelled {
-                // isSwitchAttached blockiert kurz (libusb-Geräteliste),
-                // deshalb nicht auf dem MainActor ausführen.
+                // isSwitchAttached blocks briefly (libusb device list),
+                // so do not run it on the MainActor.
                 let attached = await Task.detached(priority: .utility) {
                     USBTransport.isSwitchAttached()
                 }.value
@@ -264,7 +264,7 @@ final class InstallerModel {
         monitorTask = nil
     }
 
-    // MARK: - Protokoll
+    // MARK: - Log
 
     private func appendLog(_ text: String) {
         log.append(LogLine(id: UUID(), date: .now, text: text))

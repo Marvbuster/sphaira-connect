@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Verbindungsanzeige in der Titelleisten-Zone: Punkt plus Text, animierter Farbwechsel.
+/// Connection indicator in the title bar zone: dot plus text, animated colour change.
 struct StatusPill: View {
     var attached: Bool
     var deviceSummary: String?

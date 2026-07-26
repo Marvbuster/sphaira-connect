@@ -18,9 +18,9 @@ enum Fonts {
 }
 
 enum Colors {
-    static let backgroundTint = Color(hex: 0x0B1220, alpha: 0.45)        // ruhiges Blau, Grundzustand
-    static let backgroundTintActive = Color(hex: 0x0E2416, alpha: 0.42)  // grünlich, während der Übertragung
-    static let backgroundTintError = Color(hex: 0x2A0E12, alpha: 0.42)   // rötlich, bei Fehlern
+    static let backgroundTint = Color(hex: 0x0B1220, alpha: 0.45)        // calm blue, idle state
+    static let backgroundTintActive = Color(hex: 0x0E2416, alpha: 0.42)  // greenish, while transferring
+    static let backgroundTintError = Color(hex: 0x2A0E12, alpha: 0.42)   // reddish, on errors
     static let accent = Color.accentColor
     static let success = Color.green
     static let warning = Color.yellow

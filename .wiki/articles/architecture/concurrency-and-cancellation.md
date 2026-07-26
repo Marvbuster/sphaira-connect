@@ -1,9 +1,9 @@
 ---
-title: "Nebenläufigkeit und Abbruch — MainActor-Default, Ereigniskanal, CancelFlag"
+title: "Concurrency and Cancellation — MainActor Default, Event Channel, CancelFlag"
 created: 2026-07-26
 updated: 2026-07-26
 category: architecture
-tags: [nebenlaeufigkeit, mainactor, asyncstream, abbruch, sendable, threading]
+tags: [concurrency, mainactor, asyncstream, cancellation, sendable, threading]
 status: current
 related:
   - architecture/system-overview
@@ -17,22 +17,21 @@ code_refs:
   - Sphaira Connect/USB/USBTransport.swift
 ---
 
-# Nebenläufigkeit und Abbruch
+# Concurrency and Cancellation
 
-Das Projekt baut mit `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`: **jeder Typ ist
-standardmäßig `@MainActor`**, wenn nichts anderes dasteht. Für eine App, deren Kernaufgabe
-stundenlang blockierende `libusb_bulk_transfer`-Aufrufe sind, ist das genau die falsche
-Voreinstellung — deshalb tragen `Core/` und `USB/` fast durchgehend `nonisolated`
-(einzige Ausnahme: `ProgressTracker`, siehe Fallstricke), die Sitzung
-läuft in einem `Task.detached`, und **jede** Rückmeldung kommt über genau einen geordneten
-`AsyncStream` zurück. Der Abbruch läuft nicht über `Task.cancel()`, sondern über ein
-`NSLock`-gesichertes Flag, das die blockierenden Schleifen zwischen zwei USB-Timeouts
-abfragen.
+The project builds with `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`: **every type is `@MainActor`
+by default** unless stated otherwise. For an app whose core job is making blocking
+`libusb_bulk_transfer` calls for hours on end, that is exactly the wrong default — which is why
+`Core/` and `USB/` are marked `nonisolated` almost throughout (the sole exception is
+`ProgressTracker`, see Pitfalls), the session runs inside a `Task.detached`, and **every** piece of
+feedback comes back through exactly one ordered `AsyncStream`. Cancellation does not go through
+`Task.cancel()` but through an `NSLock`-guarded flag that the blocking loops poll between two USB
+timeouts.
 
-## Der MainActor-Default und seine Folgen
+## The MainActor default and its consequences
 
-Weil der Default umgedreht ist, steht das Schlüsselwort an Stellen, an denen man es sonst
-nie sieht — an Enums, Structs und Konstanten:
+Because the default is inverted, the keyword shows up in places you would otherwise never see it —
+on enums, structs and constants:
 
 ```swift
 nonisolated enum CRC32C { … }
@@ -40,9 +39,9 @@ nonisolated struct Packet: Equatable, Sendable { … }
 nonisolated struct TransferProgress: Equatable, Sendable { … }
 ```
 
-Ohne das `nonisolated` wäre `CRC32C.checksum` ein MainActor-Aufruf und in `InstallSession`
-schlicht nicht erreichbar. Für die beiden Klassen in `USB/` reicht `nonisolated` allein
-nicht, weil sie veränderlichen Zustand halten:
+Without that `nonisolated`, `CRC32C.checksum` would be a MainActor call and simply unreachable
+from `InstallSession`. For the two classes in `USB/`, `nonisolated` alone is not enough, because
+they hold mutable state:
 
 ```swift
 final class USBTransport: @unchecked Sendable {
@@ -50,13 +49,13 @@ final class USBTransport: @unchecked Sendable {
     nonisolated(unsafe) private var handle: OpaquePointer?
 ```
 
-`@unchecked Sendable` ist hier eine Zusage an den Compiler, die der Aufrufer einhalten muss:
-**eine `USBTransport`-Instanz gehört genau einem Thread.** Im Projekt ist das gegeben — die
-Instanz wird in `InstallerModel.start()` erzeugt, sofort an die Sitzung übergeben und nur
-noch aus deren detached Task benutzt. `isSwitchAttached()` ist `static` und öffnet einen
-eigenen libusb-Kontext, teilt also nichts.
+`@unchecked Sendable` is a promise to the compiler that the caller has to keep: **one
+`USBTransport` instance belongs to exactly one thread.** In this project that holds — the instance
+is created in `InstallerModel.start()`, handed to the session immediately and from then on used
+only from its detached task. `isSwitchAttached()` is `static` and opens its own libusb context, so
+it shares nothing.
 
-## Sitzungsstart: `Task.detached`, keine Modellreferenz
+## Session start: `Task.detached`, no model reference
 
 ```swift
 Task.detached(priority: .userInitiated) {
@@ -74,37 +73,35 @@ Task.detached(priority: .userInitiated) {
 }
 ```
 
-`Task.detached` — nicht `Task { }` — weil ein normales `Task` in einem `@MainActor`-Kontext
-die Isolation erbt und der Hauptthread dann für die gesamte Übertragung stünde. Ebenso
-wichtig: **die Sitzung hält keine Referenz auf `InstallerModel`.** Sie schreibt nur in die
-Continuation. Damit gibt es weder einen Referenzzyklus noch die Versuchung, aus dem
-USB-Thread MainActor-Zustand zu lesen.
+`Task.detached` — not `Task { }` — because a plain `Task` in a `@MainActor` context inherits the
+isolation, and the main thread would then be tied up for the entire transfer. Equally important:
+**the session holds no reference to `InstallerModel`.** It only writes into the continuation. That
+rules out both a reference cycle and the temptation to read MainActor state from the USB thread.
 
-## Ein Kanal statt vieler Tasks
+## One channel instead of many tasks
 
-Naheliegend wäre gewesen, jeden Callback als `Task { @MainActor in … }` zurückzuschicken.
-Das ist falsch, und der Kommentar im Code sagt auch warum:
+The obvious approach would have been to send each callback back as a `Task { @MainActor in … }`.
+That is wrong, and the comment in the code says why:
 
 ```swift
-/// Rückmeldungen der Sitzung. Sie laufen durch genau einen geordneten Kanal,
-/// damit Fortschritt und Protokollzeilen nicht vertauscht ankommen — einzelne
-/// unstrukturierte Tasks garantieren keine Reihenfolge.
+/// Feedback from the session. It travels through exactly one ordered channel
+/// so that progress and log lines do not arrive out of order — individual
+/// unstructured tasks guarantee no ordering.
 fileprivate enum SessionEvent: Sendable { … }
 ```
 
-Unstrukturierte Tasks werden nicht in Erzeugungsreihenfolge abgearbeitet. In der Praxis
-hieße das: „Datei X fertig" erscheint vor „Übertrage X …", oder ein alter
-Fortschrittsschnappschuss überschreibt einen neueren. Der `AsyncStream` mit
-`bufferingPolicy: .unbounded` löst beides — Reihenfolge garantiert, und der USB-Thread
-blockiert nie an einem vollen Puffer (`yield` auf einen unbegrenzten Strom kehrt sofort
-zurück). Die Konsumentenseite ist eine einzige Schleife:
+Unstructured tasks are not executed in creation order. In practice that would mean: "file X done"
+appears before "transferring X …", or a stale progress snapshot overwrites a newer one. The
+`AsyncStream` with `bufferingPolicy: .unbounded` solves both — ordering is guaranteed, and the USB
+thread never blocks on a full buffer (a `yield` into an unbounded stream returns immediately). The
+consumer side is a single loop:
 
 ```swift
 eventTask = Task { @MainActor [weak self] in
     for await event in stream {
         self?.apply(event)
     }
-    // Der Strom ist zu Ende, ohne dass ein Abschlussereignis kam.
+    // The stream ended without a completion event arriving.
     guard let self, self.isBusy else { return }
     self.progress = nil
     self.phase = .idle
@@ -112,12 +109,12 @@ eventTask = Task { @MainActor [weak self] in
 }
 ```
 
-Der Rückfall nach der Schleife ist kein Zierrat: `continuation.finish()` steht im `defer` des
-detached Tasks und feuert damit **immer**, auch auf Pfaden, die kein Abschlussereignis
-geliefert haben. Ohne diesen Zweig bliebe die Oberfläche auf „läuft" stehen und „Abbrechen"
-aktiv, obwohl nichts mehr passiert.
+The fallback after the loop is not decoration: `continuation.finish()` sits in the detached task's
+`defer` and therefore fires **always**, including on paths that delivered no completion event.
+Without this branch the UI would stay stuck on "running" with "Cancel" still active even though
+nothing is happening any more.
 
-## `CancelFlag` und `DoneCounter` — warum zwei Mini-Klassen mit `NSLock`
+## `CancelFlag` and `DoneCounter` — why two tiny classes with `NSLock`
 
 ```swift
 fileprivate nonisolated final class CancelFlag: @unchecked Sendable {
@@ -128,15 +125,13 @@ fileprivate nonisolated final class CancelFlag: @unchecked Sendable {
 }
 ```
 
-Das `cancel`-Closure wird **synchron aus dem USB-Thread** aufgerufen, mitten in einer
-blockierenden Schleife. Es darf deshalb weder `await` enthalten noch MainActor-Zustand
-lesen — sonst würde der USB-Thread auf den Hauptthread warten, während dieser womöglich
-gerade auf USB-Ergebnisse wartet. Ein Boolean hinter einem `NSLock` ist die kleinste
-Konstruktion, die das erfüllt.
+The `cancel` closure is called **synchronously from the USB thread**, in the middle of a blocking
+loop. It must therefore contain no `await` and read no MainActor state — otherwise the USB thread
+would wait on the main thread while that one is possibly waiting on USB results. A boolean behind
+an `NSLock` is the smallest construction that satisfies this.
 
-`DoneCounter` löst ein verwandtes Problem: Die Zahl fertiger Dateien wird **auf dem
-Sitzungs-Thread** hochgezählt, direkt im `onItemState`-Callback, bevor das Ereignis in den
-Strom geht:
+`DoneCounter` solves a related problem: the number of completed files is incremented **on the
+session thread**, right inside the `onItemState` callback, before the event goes into the stream:
 
 ```swift
 onItemState: { index, state in
@@ -145,40 +140,38 @@ onItemState: { index, state in
 },
 ```
 
-Damit steht der Wert bereits fest, wenn `.finished(transferred:)` erzeugt wird — die
-Abschlussmeldung hängt nicht davon ab, ob die MainActor-Seite die vorherigen Ereignisse
-schon verarbeitet hat.
+That way the value is already final when `.finished(transferred:)` is created — the completion
+message does not depend on whether the MainActor side has processed the preceding events yet.
 
-## Der Abbruchpfad
+## The cancellation path
 
-Abbruch ist kein `Task.cancel()`, weil die Sitzung nicht in `await`-Punkten hängt, sondern in
-C-Aufrufen. Stattdessen prüft jede blockierende Schleife das Flag zwischen zwei Timeouts:
+Cancellation is not `Task.cancel()`, because the session is not suspended at `await` points but
+inside C calls. Instead every blocking loop checks the flag between two timeouts:
 
-| Ort | Timeout | Verhalten |
+| Site | Timeout | Behaviour |
 |---|---|---|
-| `USBTransport.open` | 250 ms `usleep` zwischen Öffnungsversuchen | `cancel()` → `close()` + `InstallError.cancelled` |
-| `USBTransport.read` (private) | `readTimeoutMS = 500` | `LIBUSB_ERROR_TIMEOUT` (−7) ist **kein Fehler**, nur die Gelegenheit, `cancel` zu prüfen |
-| `USBTransport.write` | `writeTimeoutMS = 5_000` | ebenso; großzügiger, weil ein Block unterwegs ist |
+| `USBTransport.open` | 250 ms `usleep` between open attempts | `cancel()` → `close()` + `InstallError.cancelled` |
+| `USBTransport.read` (private) | `readTimeoutMS = 500` | `LIBUSB_ERROR_TIMEOUT` (−7) is **not an error**, just the opportunity to check `cancel` |
+| `USBTransport.write` | `writeTimeoutMS = 5_000` | same; more generous because a block is in flight |
 
 ```swift
 if code == 0 || code == Self.errorTimeout {
-    // Bei Timeout können trotzdem Teilbytes angekommen sein.
+    // Even on a timeout, partial bytes may have arrived.
     received += Int(transferred)
 }
 ```
 
-Die Zeile ist der eigentliche Trick: Ein Timeout wird als Teilfortschritt verbucht, nicht als
-Abbruch. `read(count:)` liest deshalb so lange weiter, bis die geforderten Bytes vollständig
-da sind — ein Paket, das über eine Timeout-Grenze hinweg eintrudelt, geht nicht verloren.
-Praktische Folge für die Bedienung: Ein Abbruch greift beim Lesen binnen ~500 ms, beim
-Schreiben im schlimmsten Fall erst nach ~5 s. Die libusb-Seite dazu steht in
-[[usb/libusb-transport]].
+That line is the actual trick: a timeout is booked as partial progress, not as an abort. This is
+why `read(count:)` keeps reading until the requested bytes are fully there — a packet that
+trickles in across a timeout boundary is not lost. Practical consequence for the user: a
+cancellation takes effect within roughly 500 ms while reading, but in the worst case only after
+about 5 s while writing. The libusb side of this is covered in [[usb/libusb-transport]].
 
-Geworfen wird immer `InstallError.cancelled`; `InstallerModel` fängt das gesondert ab und
-meldet `.cancelled` statt `.failed`, damit ein bewusster Abbruch nicht wie ein Fehler
-aussieht.
+What is thrown is always `InstallError.cancelled`; `InstallerModel` catches that separately and
+reports `.cancelled` instead of `.failed`, so that a deliberate cancellation does not look like a
+failure.
 
-## `close()` kehrt sofort zurück
+## `close()` returns immediately
 
 ```swift
 DispatchQueue.global(qos: .utility).async {
@@ -190,17 +183,17 @@ DispatchQueue.global(qos: .utility).async {
 }
 ```
 
-`close()` steht im `defer` von `InstallSession.run` — es läuft also unmittelbar vor der
-Abschlussmeldung. Hat die Switch die Verbindung ihrerseits schon abgebaut, können
-`libusb_close` und `libusb_exit` blockieren; die Übertragung sähe dann ewig „läuft" aus,
-obwohl sie fertig ist. Deshalb löst `close()` zuerst die eigenen Verweise (`handle = nil`,
-`context = nil`, damit ein zweiter Aufruf nichts doppelt freigibt) und schiebt den
-eigentlichen Abbau auf eine Hintergrundqueue.
+`close()` sits in the `defer` of `InstallSession.run` — so it runs immediately before the
+completion message. If the Switch has already torn down the connection on its side, `libusb_close`
+and `libusb_exit` can block; the transfer would then look like it is "running" forever even though
+it is done. That is why `close()` first clears its own references (`handle = nil`, `context = nil`,
+so a second call does not free anything twice) and pushes the actual teardown onto a background
+queue.
 
-## Geräteüberwachung
+## Device monitoring
 
-`startMonitoring()` pollt alle zwei Sekunden, ob eine Switch am Bus hängt. Die Schleife lebt
-auf dem MainActor (sie schreibt `switchAttached`), der blockierende Teil nicht:
+`startMonitoring()` polls every two seconds for a Switch on the bus. The loop lives on the
+MainActor (it writes `switchAttached`), the blocking part does not:
 
 ```swift
 let attached = await Task.detached(priority: .utility) {
@@ -208,22 +201,21 @@ let attached = await Task.detached(priority: .utility) {
 }.value
 ```
 
-`isSwitchAttached()` baut jedes Mal einen eigenen libusb-Kontext auf und wieder ab und
-läuft dadurch kurz, aber eben blockierend. Ein `Task.isCancelled`-Check vor dem Schreiben
-und ein `catch break` um den `Task.sleep` sorgen dafür, dass `stopMonitoring()` (aufgerufen
-aus `RootView.onDisappear`) sauber greift.
+`isSwitchAttached()` sets up and tears down its own libusb context every time and is therefore
+short-lived, but blocking nonetheless. A `Task.isCancelled` check before the write and a
+`catch break` around the `Task.sleep` make sure that `stopMonitoring()` (called from
+`RootView.onDisappear`) takes effect cleanly.
 
-## Fallstricke
+## Pitfalls
 
-- **Neuer Code in `Core/` ohne `nonisolated`** ist automatisch MainActor-isoliert. Im
-  Swift-5-Sprachmodus des Projekts ist der Aufruf aus `nonisolated`-Kontext nur eine
-  **Warnung**, kein Fehler — `struct ProgressTracker` (ohne `nonisolated` deklariert) wird
-  genau so aus `InstallSession.transferFile` benutzt und übersetzt trotzdem. Ab dem
-  Swift-6-Sprachmodus würde daraus ein Compilerfehler; neue Core-Typen deshalb ausdrücklich
-  `nonisolated` markieren.
-- **`NumberFormatter` und Freunde meiden.** `ByteFormat` formatiert von Hand, weil die
-  Aufrufer `nonisolated` sind; siehe [[architecture/queue-and-file-scanning]].
-- **Kein `await` im `cancel`-Closure.** Es ist ein synchrones `() -> Bool` und wird tief im
-  USB-Thread aufgerufen.
-- **`USBTransport` nicht zwischen Tasks teilen.** `@unchecked Sendable` schaltet die
-  Compiler-Prüfung ab; die Einthread-Zusage ist reine Disziplin.
+- **New code in `Core/` without `nonisolated`** is automatically MainActor-isolated. In the
+  project's Swift 5 language mode, calling it from a `nonisolated` context is only a **warning**,
+  not an error — `struct ProgressTracker` (declared without `nonisolated`) is used exactly that
+  way from `InstallSession.transferFile` and still compiles. Under the Swift 6 language mode this
+  would become a compiler error; mark new Core types `nonisolated` explicitly for that reason.
+- **Avoid `NumberFormatter` and friends.** `ByteFormat` formats by hand because its callers are
+  `nonisolated`; see [[architecture/queue-and-file-scanning]].
+- **No `await` in the `cancel` closure.** It is a synchronous `() -> Bool` and is called deep
+  inside the USB thread.
+- **Do not share `USBTransport` between tasks.** `@unchecked Sendable` switches the compiler check
+  off; the single-thread promise is pure discipline.

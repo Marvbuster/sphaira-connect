@@ -2,19 +2,19 @@
 //  ProgressTracker.swift
 //  Sphaira Connect
 //
-//  Buchführung über den Fortschritt einer Dateiübertragung.
+//  Bookkeeping for the progress of a file transfer.
 //
 
 import Foundation
 
-/// Zählt übertragene Bytes und schätzt den Durchsatz.
+/// Counts transferred bytes and estimates throughput.
 ///
-/// Bewusst ohne Zeit- und USB-Abhängigkeit: Der Zeitstempel wird hereingereicht,
-/// damit sich das Verhalten deterministisch prüfen lässt.
+/// Deliberately free of any clock or USB dependency: the timestamp is passed in
+/// so the behaviour can be tested deterministically.
 nonisolated struct ProgressTracker {
-    /// Mindestabstand zwischen zwei Aktualisierungen der Oberfläche.
+    /// Minimum interval between two UI updates.
     static let emitIntervalNanos: UInt64 = 100_000_000
-    /// Gewicht des neuen Messwerts bei der Durchsatzglättung (0…1).
+    /// Weight of the new sample in the throughput smoothing (0…1).
     static let rateSmoothing: Double = 0.2
 
     let totalBytes: Int64
@@ -30,18 +30,19 @@ nonisolated struct ProgressTracker {
         self.lastEmitNanos = startNanos
     }
 
-    /// Zählt einen übertragenen Block.
+    /// Counts one transferred chunk.
     ///
-    /// Die von der Switch angeforderte Position geht bewusst NICHT ein: Sie liest
-    /// Kopf- und Partitionsdaten quer über die Datei, oft früh nahe dem Ende. Eine
-    /// Hochwassermarke über die höchste Position stünde dadurch sofort bei 100 %.
+    /// The offset requested by the Switch is deliberately NOT taken into account:
+    /// it reads header and partition data all over the file, often near the end
+    /// early on. A high-water mark over the highest offset would therefore jump
+    /// straight to 100 %.
     mutating func record(chunkSize: Int) {
         guard chunkSize > 0 else { return }
         sentBytes += Int64(chunkSize)
     }
 
-    /// Übertragene Bytes, auf die Dateigröße geklemmt — die Switch darf einen
-    /// Bereich auch mehrfach anfordern.
+    /// Transferred bytes, clamped to the file size — the Switch is allowed to
+    /// request the same range more than once.
     var clampedSent: Int64 {
         min(sentBytes, totalBytes)
     }
@@ -51,8 +52,8 @@ nonisolated struct ProgressTracker {
         return min(1, Double(clampedSent) / Double(totalBytes))
     }
 
-    /// Meldet, ob eine Aktualisierung fällig ist, und schreibt dabei den
-    /// geglätteten Durchsatz fort. `force` erzwingt sie (Dateiende).
+    /// Reports whether an update is due, advancing the smoothed throughput in
+    /// the process. `force` demands one (end of file).
     mutating func tick(now: UInt64, force: Bool = false) -> Bool {
         let elapsedNanos = now &- lastEmitNanos
         guard force || elapsedNanos >= Self.emitIntervalNanos else { return false }

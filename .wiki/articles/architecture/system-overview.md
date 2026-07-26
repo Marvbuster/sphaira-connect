@@ -1,9 +1,9 @@
 ---
-title: "Systemüberblick — Module, Vertrag und Datenfluss"
+title: "System Overview — Modules, Contract and Data Flow"
 created: 2026-07-26
 updated: 2026-07-26
 category: architecture
-tags: [architektur, module, contract, datenfluss, swiftui, macos, usb]
+tags: [architecture, modules, contract, data-flow, swiftui, macos, usb]
 status: current
 related:
   - architecture/concurrency-and-cancellation
@@ -23,72 +23,72 @@ code_refs:
   - Sphaira Connect/USB/InstallSession.swift
 ---
 
-# Systemüberblick
+# System Overview
 
-Sphaira Connect ist eine native macOS-App, die NSP/XCI/NSZ/XCZ-Dateien per USB an die
-Homebrew-App **Sphaira** auf einer Nintendo Switch überträgt — der Ersatz für das
-Python-Skript `usb_install.py`. Der Code zerfällt in **vier Schichten mit strikt
-einseitiger Abhängigkeitsrichtung**: `Core/` kennt niemanden, `USB/` kennt `Core/`,
-`Shared/` kennt nur SwiftUI, `Features/` kennt alles und ist die einzige Schicht auf dem
-MainActor. Verbindlich festgeschrieben ist dieser Schnitt in `CONTRACT.md` — nicht als
-Empfehlung, sondern als Signaturvertrag, gegen den jedes Modul einzeln gebaut wurde.
+Sphaira Connect is a native macOS app that transfers NSP/XCI/NSZ/XCZ files over USB to the
+homebrew app **Sphaira** on a Nintendo Switch — the replacement for the Python script
+`usb_install.py`. The code splits into **four layers with a strictly one-way dependency
+direction**: `Core/` knows nobody, `USB/` knows `Core/`, `Shared/` knows only SwiftUI, and
+`Features/` knows everything and is the only layer on the MainActor. This split is pinned down in
+`CONTRACT.md` — not as a recommendation but as a signature contract that every module was built
+against individually.
 
-## Die vier Schichten
+## The four layers
 
-| Ordner | Darf abhängen von | Isolation | Inhalt |
+| Folder | May depend on | Isolation | Contents |
 |---|---|---|---|
-| `Sphaira Connect/Core/` | nichts außer `Foundation` | `nonisolated` (Ausnahme: `ProgressTracker`, siehe [[architecture/concurrency-and-cancellation]]) | `CRC32C`, `Packet`, `InstallError`, `InstallItem`/`ItemScanner`, `ByteFormat`, `ProgressTracker` |
-| `Sphaira Connect/USB/` | `Core/`, libusb (C) | `@unchecked Sendable`, `nonisolated` | `USBTransport` (roher Bus), `InstallSession` (Zustandsautomat), `LibUSBProbe` |
-| `Sphaira Connect/Shared/` | SwiftUI/AppKit | MainActor (Standard) | Designsystem: `DesignTokens`, `GlassEffectTheme`, `GlassButton`, `GlassInteractive`, `WindowStyleConfigurator` |
-| `Sphaira Connect/Features/` | alles darunter | MainActor | `InstallerModel` (`@Observable`) und `Views/` |
+| `Sphaira Connect/Core/` | nothing but `Foundation` | `nonisolated` (exception: `ProgressTracker`, see [[architecture/concurrency-and-cancellation]]) | `CRC32C`, `Packet`, `InstallError`, `InstallItem`/`ItemScanner`, `ByteFormat`, `ProgressTracker` |
+| `Sphaira Connect/USB/` | `Core/`, libusb (C) | `@unchecked Sendable`, `nonisolated` | `USBTransport` (the raw bus), `InstallSession` (state machine), `LibUSBProbe` |
+| `Sphaira Connect/Shared/` | SwiftUI/AppKit | MainActor (default) | Design system: `DesignTokens`, `GlassEffectTheme`, `GlassButton`, `GlassInteractive`, `WindowStyleConfigurator` |
+| `Sphaira Connect/Features/` | everything below | MainActor | `InstallerModel` (`@Observable`) and `Views/` |
 
-Die Trennlinie zwischen `Core/` und `USB/` ist keine Kosmetik, sondern **testbarkeitsgetrieben**:
-`SphairaCoreTests/Sources/SphairaCore` ist ein Symlink auf `Sphaira Connect/Core`
-(`SphairaCore -> ../../Sphaira Connect/Core`). Das SwiftPM-Testpaket kompiliert dieselben
-Dateien noch einmal — ohne Xcode-Projekt, ohne Bridging-Header, ohne libusb. Ein
-versehentliches `import SwiftUI` oder ein `libusb_*`-Aufruf in `Core/` bricht deshalb sofort
-den Testlauf. Die Schichtregel ist damit *erzwungen*, nicht nur dokumentiert; Einzelheiten
-zum Testaufbau in [[operations/testing-strategy]].
+The dividing line between `Core/` and `USB/` is not cosmetic, it is **driven by testability**:
+`SphairaCoreTests/Sources/SphairaCore` is a symlink to `Sphaira Connect/Core`
+(`SphairaCore -> ../../Sphaira Connect/Core`). The SwiftPM test package compiles those same files
+a second time — without the Xcode project, without a bridging header, without libusb. An
+accidental `import SwiftUI` or a `libusb_*` call inside `Core/` therefore breaks the test run
+immediately. The layering rule is thus *enforced*, not merely documented; details of the test
+setup are in [[operations/testing-strategy]].
 
-## Warum `CONTRACT.md` verbindlich ist
+## Why `CONTRACT.md` is binding
 
-`CONTRACT.md` listet für jedes Modul die **exakten Signaturen** — Typnamen, Parameter,
-Reihenfolgen, Konstanten. Der Grund ist arbeitsteiliger Bau: Wer `InstallSession` schreibt,
-muss `USBTransport` nicht gelesen haben; wer die Ansichten baut, ruft `InstallerModel` auf,
-das es zu dem Zeitpunkt vielleicht noch gar nicht gibt. Deshalb die Regel im Vertrag: Wer
-etwas vermisst, ergänzt **additiv** (neue Methode), ohne Bestehendes zu ändern.
+`CONTRACT.md` lists the **exact signatures** for every module — type names, parameters, orderings,
+constants. The reason is division of labour: whoever writes `InstallSession` need not have read
+`USBTransport`; whoever builds the views calls `InstallerModel`, which may not even exist yet at
+that point. Hence the rule in the contract: if something is missing, add it **additively** (a new
+method) without changing what is already there.
 
-Die Rahmenbedingungen aus dem Vertrag sind im Projekt tatsächlich so gesetzt
+The build settings the contract prescribes are actually set that way in the project
 (`Sphaira Connect.xcodeproj/project.pbxproj`):
 
 - `MACOSX_DEPLOYMENT_TARGET = 26.5`, `SWIFT_VERSION = 5.0`
-- `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` — jeder Typ ist ohne Zutun `@MainActor`,
-  siehe [[architecture/concurrency-and-cancellation]]
-- `ENABLE_APP_SANDBOX = NO` — ohne Sandbox-Ausnahme kein roher USB-Zugriff
+- `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` — every type is `@MainActor` without doing
+  anything, see [[architecture/concurrency-and-cancellation]]
+- `ENABLE_APP_SANDBOX = NO` — without a sandbox exemption there is no raw USB access
 - `SWIFT_OBJC_BRIDGING_HEADER = Sphaira Connect/USB/SphairaConnect-Bridging-Header.h` —
-  deshalb sind `libusb_*`-Funktionen ohne `import` global sichtbar
+  this is why the `libusb_*` functions are globally visible without an `import`
 
-Wie libusb statisch dazugelinkt wird, steht in [[operations/build-configuration]].
+How libusb gets statically linked in is described in [[operations/build-configuration]].
 
-Dazu zwei Regeln, die man beim Weiterbauen leicht verletzt:
+On top of that, two rules that are easy to violate while extending the project:
 
-- **Die Projektdatei wird nicht angefasst.** Die Quellen hängen an einer
-  `PBXFileSystemSynchronizedRootGroup`; eine neue Datei im richtigen Ordner wird automatisch
-  kompiliert. Manuelles Eintragen in `project.pbxproj` erzeugt nur Konflikte.
-- **Keine Datei über 400 Zeilen.** Aktuell sind die größten Dateien `InstallerModel.swift`
-  (273) und `USBTransport.swift` (270).
+- **The project file is not touched.** The sources hang off a
+  `PBXFileSystemSynchronizedRootGroup`; a new file in the right folder is compiled automatically.
+  Adding entries to `project.pbxproj` by hand only creates conflicts.
+- **No file over 400 lines.** The largest files right now are `InstallerModel.swift` (273) and
+  `USBTransport.swift` (270).
 
-## Datenfluss — von der Ablagefläche bis auf die Switch
+## Data flow — from the drop zone to the Switch
 
 ```mermaid
 flowchart TD
     A[DropZoneView<br/>Drop / NSOpenPanel] -->|URLs| B[InstallerModel.add]
-    B --> C[ItemScanner.scan<br/>Ordner, Filter, Duplikate]
+    B --> C[ItemScanner.scan<br/>folders, filter, duplicates]
     C --> D[items: InstallItem]
     D -->|start| E[Task.detached]
     E --> F[InstallSession.run]
-    F <-->|24-Byte-Pakete| G[USBTransport<br/>libusb bulk]
-    G <-->|USB| H[Sphaira auf der Switch]
+    F <-->|24-byte packets| G[USBTransport<br/>libusb bulk]
+    G <-->|USB| H[Sphaira on the Switch]
     F -->|SessionEvent| I[AsyncStream]
     I --> J[InstallerModel.apply<br/>MainActor]
     J --> K[RootView / QueueListView<br/>ProgressPanelView / LogConsoleView]
@@ -98,53 +98,53 @@ flowchart TD
     style J fill:#bbdefb,color:#000
 ```
 
-Die Kette im Klartext:
+The chain in plain words:
 
-1. `DropZoneView` nimmt Dateien und Ordner per `.onDrop` oder `NSOpenPanel` entgegen und
-   reicht rohe `URL`s an `InstallerModel.add(urls:)`.
-2. `ItemScanner.scan` löst Ordner rekursiv auf, filtert auf die vier installierbaren
-   Endungen, entfernt Duplikate und sortiert stabil alphabetisch —
-   siehe [[architecture/queue-and-file-scanning]].
-3. `InstallerModel.start()` friert die Warteschlange in eine `InstallSession` ein und startet
-   sie per `Task.detached`. Das Ansichtsmodell wird der Sitzung **nicht** übergeben.
-4. Die Sitzung spricht das SPH0-Protokoll ([[protocol/sph0-wire-protocol]]) über
-   `USBTransport` ([[usb/libusb-transport]]) und folgt dem Ablauf aus
+1. `DropZoneView` accepts files and folders via `.onDrop` or `NSOpenPanel` and hands raw `URL`s
+   to `InstallerModel.add(urls:)`.
+2. `ItemScanner.scan` resolves folders recursively, filters for the four installable extensions,
+   removes duplicates and sorts stably in alphabetical order —
+   see [[architecture/queue-and-file-scanning]].
+3. `InstallerModel.start()` freezes the queue into an `InstallSession` and starts it via
+   `Task.detached`. The view model is **not** handed to the session.
+4. The session speaks the SPH0 protocol ([[protocol/sph0-wire-protocol]]) through `USBTransport`
+   ([[usb/libusb-transport]]) and follows the flow described in
    [[protocol/install-session-flow]].
-5. Alle Rückmeldungen — Protokollzeilen, Gerät, Fortschritt, Eintragszustände — laufen als
-   `SessionEvent` durch **einen** `AsyncStream` zurück auf den MainActor.
-6. `RootView` rendert daraus Warteschlange, Fortschritt und Protokoll; die Phasenfarbe des
-   Fensterhintergrunds (`Colors.backgroundTint*`) folgt `model.phase`.
+5. All feedback — log lines, device, progress, item states — travels back to the MainActor as
+   `SessionEvent` values through **one** `AsyncStream`.
+6. `RootView` renders queue, progress and log from that; the phase tint of the window background
+   (`Colors.backgroundTint*`) follows `model.phase`.
 
-`Sphaira_ConnectApp.swift` bleibt dabei bewusst leer bis auf `WindowGroup`,
-`.windowStyle(.hiddenTitleBar)` und `.windowResizability(.contentSize)`; `ContentView.swift`
-ist eine dreizeilige Hülle um `RootView`. Die Fenstergestalt (transparente Titelleiste,
-animierte Größenanpassung) macht `WindowStyleConfigurator` als `NSViewRepresentable` —
-Aufbau der Ansichten in [[ui/window-and-views]], das Designsystem in
+`Sphaira_ConnectApp.swift` deliberately stays empty apart from `WindowGroup`,
+`.windowStyle(.hiddenTitleBar)` and `.windowResizability(.contentSize)`; `ContentView.swift` is a
+three-line shell around `RootView`. The window's appearance (transparent title bar, animated
+resizing) is handled by `WindowStyleConfigurator` as an `NSViewRepresentable` — the structure of
+the views is covered in [[ui/window-and-views]], the design system in
 [[ui/design-system-liquid-glass]].
 
-## Was der Vertrag nicht sagt (Abweichungen und Ergänzungen)
+## What the contract does not say (deviations and additions)
 
-Der Vertrag ist Stand *vor* dem Bau; an drei Stellen ist die Umsetzung bewusst darüber
-hinausgegangen. Alle drei sind additiv:
+The contract reflects the state *before* the build; in three places the implementation
+deliberately went beyond it. All three are additive:
 
-- **`Core/ProgressTracker.swift` kommt im Vertrag nicht vor.** Der Vertrag schrieb eine
-  Hochwassermarke `max(bisher, offset + gelesen)` vor. Die hat in freier Wildbahn versagt,
-  weil die Switch bei XCI-Dateien früh nahe dem Dateiende liest — der Balken stand sofort
-  bei 100 %. Ersetzt durch Summenzählung, siehe [[protocol/progress-tracking]].
-- **Der Fehlerpfad einer Datei bricht die Sitzung nicht ab.** `transferFile` liefert `Bool`
-  statt zu werfen, damit der abschließende Quit-Befehl der Switch noch regulär beantwortet
-  wird ([[protocol/install-session-flow]]).
-- **Der Rückkanal ist ein `AsyncStream`,** nicht ein `Task { @MainActor in … }` je Callback.
-  Begründung in [[architecture/concurrency-and-cancellation]].
+- **`Core/ProgressTracker.swift` does not appear in the contract.** The contract prescribed a
+  high-water mark, `max(so far, offset + bytes read)`. That failed in the field because for XCI
+  files the Switch reads near the end of the file early on — the bar jumped straight to 100 %.
+  Replaced by cumulative counting, see [[protocol/progress-tracking]].
+- **The error path for a single file does not abort the session.** `transferFile` returns `Bool`
+  instead of throwing, so that the Switch's final quit command still gets a regular answer
+  ([[protocol/install-session-flow]]).
+- **The return channel is an `AsyncStream`,** not a `Task { @MainActor in … }` per callback.
+  The rationale is in [[architecture/concurrency-and-cancellation]].
 
-Eine Altlast ist außerdem sichtbar: `USB/LibUSBProbe.swift` behauptet im Kopfkommentar, es
-werde „von der Statusanzeige benutzt". Tatsächlich referenziert kein anderer Quelltext den
-Typ — die Geräteüberwachung ruft `USBTransport.isSwitchAttached()` auf, das dieselbe Logik
-noch einmal enthält. `LibUSBProbe` ist damit reiner Rauchtest-Code (er kann zusätzlich die
-libusb-Version melden) und kein Bestandteil des Datenflusses.
+One piece of legacy is also visible: `USB/LibUSBProbe.swift` claims in its header comment that it
+is "used by the status display". In reality no other source file references the type — device
+monitoring calls `USBTransport.isSwitchAttached()`, which contains the same logic a second time.
+`LibUSBProbe` is therefore pure smoke-test code (it can additionally report the libusb version)
+and not part of the data flow.
 
-## Gerätekennung
+## Device identification
 
-Die Switch wird über `idVendor == 0x057E` und `idProduct == 0x3000` erkannt — beide
-Konstanten stehen doppelt im Projekt (`USBTransport.vendorID/productID` und
-`LibUSBProbe.vendorID/productID`). Wer sie ändert, muss beide Stellen anfassen.
+The Switch is recognised by `idVendor == 0x057E` and `idProduct == 0x3000` — both constants exist
+twice in the project (`USBTransport.vendorID/productID` and `LibUSBProbe.vendorID/productID`).
+Whoever changes them has to touch both places.

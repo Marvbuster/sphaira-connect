@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// Dünne Hülle — die eigentliche Oberfläche lebt in RootView.
+/// Thin shell — the actual UI lives in RootView.
 struct ContentView: View {
     var body: some View {
         RootView()

@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <title>Pfeil — Ebenen-Asset für Icon Composer</title>
+  <title>Arrow — layer asset for Icon Composer</title>
   <desc>
-    Kräftiger Pfeil nach unten, freistehend auf transparentem Grund, 1024×1024.
-    Waagerecht mittig (x = 512), senkrecht von y = 210 bis y = 830.
-    Schaft 180 breit, Spitze 380 breit. Ecken leicht gerundet (r ≈ 20), damit die
-    Form unter der Glasoptik nicht scharfkantig wirkt.
-    Der Verlauf ist bewusst schwach — er gibt nur eine Richtung vor, die Tiefe
-    macht Icon Composer.
+    Bold downward arrow, free-standing on a transparent background, 1024×1024.
+    Horizontally centred (x = 512), vertically from y = 210 to y = 830.
+    Shaft 180 wide, head 380 wide. Corners slightly rounded (r ≈ 20) so the shape
+    does not read as sharp-edged under the glass treatment.
+    The gradient is deliberately subtle — it only suggests a direction; the depth
+    comes from Icon Composer.
   </desc>
   <defs>
     <linearGradient id="arrowFill" x1="0" y1="0" x2="0" y2="1"

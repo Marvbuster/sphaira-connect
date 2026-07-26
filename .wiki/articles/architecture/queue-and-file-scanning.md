@@ -1,9 +1,9 @@
 ---
-title: "Warteschlange und Dateiscan — InstallItem, ItemScanner, ByteFormat"
+title: "Queue and File Scanning — InstallItem, ItemScanner, ByteFormat"
 created: 2026-07-26
 updated: 2026-07-26
 category: architecture
-tags: [warteschlange, dateiscan, filemanager, sortierung, formatierung, core]
+tags: [queue, file-scanning, filemanager, sorting, formatting, core]
 status: current
 related:
   - architecture/system-overview
@@ -18,17 +18,16 @@ code_refs:
   - Sphaira Connect/Features/InstallerModel.swift
 ---
 
-# Warteschlange und Dateiscan
+# Queue and File Scanning
 
-Zwischen „Ordner auf die App ziehen" und „Liste, die an die Switch geht" liegt genau eine
-Funktion: `ItemScanner.scan([URL]) -> [InstallItem]`. Sie löst Ordner rekursiv auf, filtert
-auf vier Endungen, wirft Duplikate weg, überspringt alles Unlesbare **ohne zu scheitern** und
-sortiert natürlichsprachlich stabil. Gefüttert wird sie von `DropZoneView`
-([[ui/window-and-views]]). Das Ergebnis ist die Reihenfolge, in der Sphaira die
-Titel auf der Switch anzeigt — der Scanner bestimmt damit nicht nur, *was* übertragen wird,
-sondern auch, *wie es heißt* und *in welcher Reihenfolge es dasteht*.
+Between "drag a folder onto the app" and "the list that goes to the Switch" sits exactly one
+function: `ItemScanner.scan([URL]) -> [InstallItem]`. It resolves folders recursively, filters for
+four extensions, discards duplicates, skips everything unreadable **without failing** and sorts
+stably in natural language order. It is fed by `DropZoneView` ([[ui/window-and-views]]). The result
+is the order in which Sphaira shows the titles on the Switch — so the scanner determines not only
+*what* is transferred, but also *what it is called* and *in which order it appears*.
 
-## `InstallItem` — der Eintrag
+## `InstallItem` — the entry
 
 ```swift
 nonisolated struct InstallItem: Identifiable, Equatable, Sendable {
@@ -41,31 +40,31 @@ nonisolated struct InstallItem: Identifiable, Equatable, Sendable {
 
     let id: UUID
     let url: URL
-    let displayName: String     // Dateiname inkl. Endung — geht so an die Switch
+    let displayName: String     // File name including extension — goes to the Switch as-is
     let byteCount: Int64
     var state: State
 }
 ```
 
-Vier Details, die man kennen sollte:
+Four details worth knowing:
 
-- **`displayName` ist `url.lastPathComponent`, ungefiltert.** Genau dieser String landet in
-  der Namensliste, die die Switch bekommt ([[protocol/install-session-flow]]). Umbenennen der
-  Datei auf der Platte heißt also: anderer Name in Sphaira. Es gibt keine Bereinigung von
-  Sonderzeichen — die Liste geht als UTF-8 auf den Bus.
-- **`id` ist eine frische `UUID` je Scan.** Zwei Scans derselben Datei ergeben zwei
-  verschiedene `id`s; Identität für SwiftUI-Listen ja, Identität über Läufe hinweg nein. Die
-  Duplikaterkennung arbeitet deshalb über Pfade, nicht über `id`.
-- **`state` ist das einzige veränderliche Feld.** Alles andere ist `let`; Zustandsübergänge
-  kommen ausschließlich aus `onItemState` der Sitzung.
-- **`byteCount` stammt vom Dateisystem zum Scan-Zeitpunkt**, nicht vom Transfer. Die Größe,
-  die tatsächlich an die Switch gemeldet wird, ermittelt die Sitzung selbst per
-  `file.seekToEnd()`. Ändert sich eine Datei zwischen Ablegen und Start, stimmt der
-  *Gesamtfortschritt* nicht mehr exakt — der Dateifortschritt schon.
+- **`displayName` is `url.lastPathComponent`, unfiltered.** Exactly this string ends up in the
+  file list the Switch receives ([[protocol/install-session-flow]]). Renaming the file on disk
+  therefore means a different name in Sphaira. There is no sanitising of special characters — the
+  list goes onto the wire as UTF-8.
+- **`id` is a fresh `UUID` per scan.** Two scans of the same file produce two different `id`s;
+  identity for SwiftUI lists yes, identity across runs no. Duplicate detection therefore works on
+  paths, not on `id`.
+- **`state` is the only mutable field.** Everything else is `let`; state transitions come
+  exclusively from the session's `onItemState`.
+- **`byteCount` comes from the file system at scan time**, not from the transfer. The size that is
+  actually reported to the Switch is determined by the session itself via `file.seekToEnd()`. If a
+  file changes between being dropped and the start, the *overall progress* is no longer exact —
+  the per-file progress still is.
 
-## `ItemScanner.scan` — die Pipeline
+## `ItemScanner.scan` — the pipeline
 
-Die Reihenfolge der Schritte ist bewusst und in `scan` direkt ablesbar:
+The order of the steps is deliberate and can be read straight off `scan`:
 
 ```swift
 for url in urls {
@@ -80,59 +79,57 @@ for url in urls {
 }
 ```
 
-**1. Auflösen.** `resolve(_:)` prüft mit `fileExists(atPath:isDirectory:)`. Ist es keine
-Datei und kein Ordner, kommt eine leere Liste zurück — nicht existierende URLs sind kein
-Fehler. Ordner werden mit `FileManager.enumerator` durchlaufen, und zwar mit einem
-Fehlerbehandler, der bewusst weiterlaufen lässt:
+**1. Resolving.** `resolve(_:)` checks with `fileExists(atPath:isDirectory:)`. If it is neither a
+file nor a folder, an empty list comes back — non-existent URLs are not an error. Folders are
+walked with `FileManager.enumerator`, using an error handler that deliberately keeps going:
 
 ```swift
-// errorHandler liefert true: unlesbare Unterordner überspringen statt abbrechen.
+// errorHandler returns true: skip unreadable subfolders instead of aborting.
 errorHandler: { _, _ in true }
 ```
 
-Ohne dieses `true` würde ein einziger Unterordner ohne Leserecht — etwa in einer
-Netzwerkfreigabe oder einem Time-Machine-Verzeichnis — die gesamte Aufzählung abbrechen und
-still eine halbe Liste liefern. Nur reguläre Dateien (`isRegularFileKey`) landen im
-Ergebnis; Symlinks auf Ordner und Bündel werden dadurch nicht mitgeschleppt.
+Without that `true`, a single subfolder without read permission — say inside a network share or a
+Time Machine directory — would abort the whole enumeration and silently return half a list. Only
+regular files (`isRegularFileKey`) make it into the result; symlinks to folders and bundles are
+thereby not dragged along.
 
-**2. Endungsfilter.** `installableExtensions` ist `["nsp", "xci", "nsz", "xcz"]`, verglichen
-wird `pathExtension.lowercased()`. `Bravo.XCI` und `echo.NSP` werden also erkannt — im
-Testfixture ausdrücklich abgedeckt. Eine direkt übergebene `notes.txt` fällt genauso raus wie
-eine gefundene.
+**2. Extension filter.** `installableExtensions` is `["nsp", "xci", "nsz", "xcz"]`, compared
+against `pathExtension.lowercased()`. So `Bravo.XCI` and `echo.NSP` are recognised — explicitly
+covered by the test fixture. A `notes.txt` passed in directly is dropped just like one that was
+found by the walk.
 
-**3. Duplikate.** Schlüssel ist `standardizedFileURL.path`. Das ist mehr als
-Zeichenkettenvergleich: `…/sub/../alpha.nsp` und `…/alpha.nsp` werden auf denselben Pfad
-normalisiert. Wer denselben Ordner zweimal ablegt oder Ordner *und* enthaltene Datei
-gleichzeitig, bekommt jeden Titel trotzdem einmal.
+**3. Duplicates.** The key is `standardizedFileURL.path`. That is more than a string comparison:
+`…/sub/../alpha.nsp` and `…/alpha.nsp` normalise to the same path. Drop the same folder twice, or
+a folder *and* a file it contains, and you still get each title once.
 
-**4. Lesbarkeit und Größe.** `readableFileSize` prüft `isReadableFile(atPath:)` und liest
-`fileSizeKey`. Schlägt eines fehl, wird der Eintrag übersprungen — und zwar **bevor** der
-Pfad in `seenPaths` landet. Eine unlesbare Datei blockiert damit nicht die Chance, dieselbe
-Datei später über einen anderen Weg doch noch aufzunehmen.
+**4. Readability and size.** `readableFileSize` checks `isReadableFile(atPath:)` and reads
+`fileSizeKey`. If either fails, the entry is skipped — and that happens **before** the path lands
+in `seenPaths`. An unreadable file therefore does not block the chance of picking up that same
+file later via a different route.
 
-**5. Sortierung.**
+**5. Sorting.**
 
 ```swift
-// sort(by:) ist stabil — gleiche Namen behalten ihre Fundreihenfolge.
+// sort(by:) is stable — identical names keep the order in which they were found.
 return items.sorted {
     $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending
 }
 ```
 
-`localizedStandardCompare` ist der Vergleich, den auch der Finder benutzt: Groß- und
-Kleinschreibung wird ignoriert, Ziffernfolgen werden numerisch verglichen — „Teil 2" steht
-vor „Teil 10", nicht dahinter. Zusammen mit der Stabilität von `sorted` ist die Ausgabe
-deterministisch, egal in welcher Reihenfolge das Dateisystem die Ordner aufzählt. Für die
-Anzeige auf der Switch ist das der Unterschied zwischen einer sortierten Liste und Zufall.
+`localizedStandardCompare` is the comparison the Finder uses too: case is ignored and digit runs
+are compared numerically — "Part 2" comes before "Part 10", not after it. Together with the
+stability of `sorted`, the output is deterministic no matter in which order the file system
+enumerates the folders. For the display on the Switch, that is the difference between a sorted list
+and chance.
 
-Sämtliche Schritte sind in `ItemScannerTests.swift` gegen ein temporäres Ordnerfixture
-abgesichert — verschachtelte Ordner, Endungen in Großschreibung, unnormalisierte Pfade und
-eine per `chmod 000` unlesbar gemachte Datei ([[operations/testing-strategy]]).
+All of these steps are covered in `ItemScannerTests.swift` against a temporary folder fixture —
+nested folders, uppercase extensions, non-normalised paths and a file made unreadable via
+`chmod 000` ([[operations/testing-strategy]]).
 
-## Zusammenspiel mit `InstallerModel`
+## Interplay with `InstallerModel`
 
-`scan` entfernt Duplikate nur **innerhalb eines Aufrufs**. Das Ansichtsmodell filtert
-deshalb ein zweites Mal, diesmal gegen die bereits vorhandene Warteschlange:
+`scan` removes duplicates only **within a single call**. The view model therefore filters a second
+time, this time against the queue that already exists:
 
 ```swift
 func add(urls: [URL]) {
@@ -146,21 +143,19 @@ func add(urls: [URL]) {
 }
 ```
 
-Wichtig: **Nachträglich hinzugefügte Einträge werden ans Ende gehängt, nicht neu
-einsortiert.** Die Gesamtliste ist also nur dann durchgehend alphabetisch, wenn sie in einem
-Rutsch abgelegt wurde. Das ist Absicht — eine Neusortierung würde Einträge unter dem Cursor
-wegspringen lassen.
+Important: **entries added later are appended to the end, not merged into the sort order.** So the
+overall list is alphabetical throughout only if it was dropped in one go. That is intentional —
+re-sorting would make entries jump out from under the cursor.
 
-`remove(_:)` und `clearAll()` sind durch `guard !isBusy` geschützt: Während einer laufenden
-Übertragung darf die Liste sich nicht ändern, weil die Sitzung mit einer Kopie arbeitet und
-Indizes (`packet.arg3`, `onItemState(index:)`) sonst ins Leere zeigen würden. `add` ist
-bewusst *nicht* gesperrt — neue Dateien landen dann in der Liste, gehören aber nicht zur
-laufenden Sitzung.
+`remove(_:)` and `clearAll()` are guarded by `guard !isBusy`: while a transfer is running the list
+must not change, because the session works with a copy and indices (`packet.arg3`,
+`onItemState(index:)`) would otherwise point nowhere. `add` is deliberately *not* locked — new
+files then land in the list but do not belong to the running session.
 
-## `ByteFormat` — Formatierung ohne Absturz und ohne Formatter
+## `ByteFormat` — formatting without a crash and without a formatter
 
-Alle Größen-, Raten- und Zeitangaben der Oberfläche gehen durch drei Funktionen, deren
-oberste Regel lautet: **niemals abstürzen, im Zweifel ein Gedankenstrich.**
+All size, rate and time values in the UI go through three functions whose top rule is: **never
+crash, when in doubt show an en dash.**
 
 ```swift
 static func rate(_ bytesPerSecond: Double) -> String {
@@ -169,31 +164,29 @@ static func rate(_ bytesPerSecond: Double) -> String {
 }
 ```
 
-`.nan`, `.infinity` und negative Werte ergeben `"–"`. Das ist kein theoretischer Fall:
-`ProgressPanelView` reicht bei fertiger Übertragung ausdrücklich `.nan` hinein
-(`ByteFormat.rate(isFinished ? .nan : progress.bytesPerSecond)`), um die Geschwindigkeit
-verschwinden zu lassen, und `remainingText` tut dasselbe für die Restzeit, solange kein
-Durchsatz bekannt ist. Der Gedankenstrich ist also eine *benutzte* Schnittstelle, kein
-Notausgang.
+`.nan`, `.infinity` and negative values yield `"–"`. This is not a theoretical case:
+`ProgressPanelView` deliberately passes `.nan` in once the transfer is finished
+(`ByteFormat.rate(isFinished ? .nan : progress.bytesPerSecond)`) to make the speed disappear, and
+`remainingText` does the same for the remaining time as long as no throughput is known. The en dash
+is therefore a *used* interface, not an emergency exit.
 
-Skaliert wird **dezimal** (1000er-Schritte, `B, kB, MB, GB, TB, PB`) — dieselbe Zählweise,
-die macOS im Finder verwendet, damit eine 17,5-GB-XCI auch in der App 17,5 GB heißt. Die
-Formatierung geschieht von Hand:
+Scaling is **decimal** (steps of 1000, `B, kB, MB, GB, TB, PB`) — the same counting macOS uses in
+the Finder, so that a 17.5 GB XCI is 17.5 GB in the app as well. The formatting is done by hand:
 
 ```swift
-// Deutsches Zahlenformat mit genau einer Nachkommastelle, ohne NumberFormatter
-// (der ist nicht threadsicher und die Aufrufer sind nonisolated).
+// German number format with exactly one decimal place, without NumberFormatter
+// (it is not thread-safe and the callers are nonisolated).
 let tenths = Int((value * 10).rounded())
 return "\(tenths / 10),\(tenths % 10) \(units[unitIndex])"
 ```
 
-Der Grund steht im Kommentar und hängt direkt an
-[[architecture/concurrency-and-cancellation]]: `ByteFormat` liegt in `Core/` und wird aus
-`nonisolated`-Kontexten aufgerufen; ein geteilter `NumberFormatter` wäre dort ein
-Datenrennen. Unterhalb von 1000 Bytes wird ganzzahlig ausgegeben (`"512 B"`), darüber immer
-mit genau einer Nachkommastelle und Komma als Trennzeichen.
+The reason is stated in the comment and hangs directly off
+[[architecture/concurrency-and-cancellation]]: `ByteFormat` lives in `Core/` and is called from
+`nonisolated` contexts; a shared `NumberFormatter` would be a data race there. Below 1000 bytes the
+value is printed as an integer (`"512 B"`), above that always with exactly one decimal place and a
+comma as the decimal separator (the app's UI language is German).
 
-`duration` liefert `m:ss` und ab einer Stunde `h:mm:ss`; auch hier gilt der Gedankenstrich
-für `.nan`/`.infinity`/negativ. Gespeist wird sie in `ProgressPanelView` aus
-`(overallTotal − overallSent) / bytesPerSecond`, also aus dem geglätteten Durchsatz des
+`duration` returns `m:ss`, and `h:mm:ss` from one hour on; here too the en dash applies for
+`.nan`/`.infinity`/negative values. In `ProgressPanelView` it is fed from
+`(overallTotal − overallSent) / bytesPerSecond`, that is, from the smoothed throughput of
 [[protocol/progress-tracking]].

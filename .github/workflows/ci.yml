@@ -12,27 +12,27 @@ concurrency:
 
 jobs:
   build-and-test:
-    # macos-26 ist arm64 und bringt Xcode 26 mit — beides nötig, weil die App
-    # auf macOS 26 zielt und glassEffect nutzt. Homebrew liegt dort unter
-    # /opt/homebrew, also genau dort, wohin OTHER_LDFLAGS zeigt.
+    # macos-26 is arm64 and ships Xcode 26 — both required, because the app
+    # targets macOS 26 and uses glassEffect. Homebrew lives at /opt/homebrew
+    # there, which is exactly where OTHER_LDFLAGS points.
     runs-on: macos-26
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Werkzeuge anzeigen
+      - name: Show toolchain
         run: |
           xcodebuild -version
           swift --version
 
-      - name: Abhängigkeiten installieren
-        # xcbeautify ist auf dem Läufer nicht zugesichert, deshalb explizit.
+      - name: Install dependencies
+        # xcbeautify is not guaranteed on the runner image, so install it explicitly.
         run: brew install libusb xcbeautify create-dmg
 
-      - name: Kernlogik testen
+      - name: Test core logic
         run: swift test --package-path SphairaCoreTests
 
-      - name: Debug bauen
+      - name: Build Debug
         run: |
           xcodebuild build \
             -scheme "Sphaira Connect" \
@@ -40,7 +40,7 @@ jobs:
             -destination 'platform=macOS,arch=arm64' \
             | xcbeautify --renderer github-actions || exit ${PIPESTATUS[0]}
 
-      - name: Release bauen
+      - name: Build Release
         run: |
           xcodebuild build \
             -scheme "Sphaira Connect" \
@@ -49,10 +49,10 @@ jobs:
             -derivedDataPath build \
             | xcbeautify --renderer github-actions || exit ${PIPESTATUS[0]}
 
-      - name: Testfassung als DMG verpacken
-        # Damit man an einen lauffähigen Stand kommt, ohne ein Release zu
-        # veröffentlichen. Version ist der kurze Commit-Hash, nicht 1.0 —
-        # sonst verwechselt man Testfassungen mit echten Releases.
+      - name: Package test build as DMG
+        # So you can get a runnable build without cutting a release. Named after
+        # the short commit hash rather than a version number, so test builds are
+        # never mistaken for real releases.
         run: |
           APP="build/Build/Products/Release/Sphaira Connect.app"
           mkdir -p dmg-src && cp -R "$APP" dmg-src/
@@ -65,7 +65,7 @@ jobs:
             --no-internet-enable \
             "Sphaira-Connect-${GITHUB_SHA:0:7}.dmg" dmg-src/
 
-      - name: Testfassung bereitstellen
+      - name: Upload test build
         uses: actions/upload-artifact@v4
         with:
           name: Sphaira-Connect-${{ github.sha }}

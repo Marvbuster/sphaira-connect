@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Warteschlange: Name, Größe, Zustandssymbol, Entfernen-Knopf.
-/// Der gerade laufende Eintrag ist hervorgehoben.
+/// Queue: name, size, state icon, remove button.
+/// The entry currently in flight is highlighted.
 struct QueueListView: View {
     var items: [InstallItem]
     var isBusy: Bool

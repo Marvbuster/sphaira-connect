@@ -23,12 +23,12 @@ struct Sphaira_ConnectApp: App {
         }
     }
 
-    /// Über-Fenster mit den Angaben zu fremden Bestandteilen.
+    /// About window listing the third-party components.
     ///
-    /// Die Grafik des App-Symbols steht unter CC BY 3.0. Diese Lizenz verlangt,
-    /// dass die Namensnennung für alle erreichbar ist, die das Werk benutzen —
-    /// ein Hinweis nur im Quelltext-Repository genügt dafür nicht, weil die App
-    /// auch als fertiges Programm weitergegeben wird.
+    /// The app icon artwork is licensed under CC BY 3.0. That license requires
+    /// the attribution to be reachable by everyone who uses the work — a notice
+    /// in the source repository alone is not enough, because the app is also
+    /// distributed as a finished binary.
     private func showAboutPanel() {
         let credits = NSMutableAttributedString()
 

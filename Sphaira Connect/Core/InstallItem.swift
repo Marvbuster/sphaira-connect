@@ -5,18 +5,17 @@ nonisolated struct InstallItem: Identifiable, Equatable, Sendable {
         case queued
         case transferring
         case done
-        /// Die Switch hat die Datei nach wenigen Bytes geschlossen. Ob sie den
-        /// Titel übersprungen hat (bereits installiert) oder verworfen (etwa
-        /// wegen ungültigem Kopfsatz), geht aus dem Protokoll NICHT hervor —
-        /// beide Fälle sehen auf dem Draht identisch aus. Deshalb ein eigener,
-        /// neutraler Zustand statt eines Fehlers.
+        /// The Switch closed the file after a few bytes. Whether it skipped the
+        /// title (already installed) or rejected it (e.g. an invalid header) is
+        /// NOT distinguishable from the protocol — both cases look identical on
+        /// the wire. Hence a dedicated, neutral state instead of an error.
         case skipped(String)
         case failed(String)
     }
 
     let id: UUID
     let url: URL
-    let displayName: String     // Dateiname inkl. Endung — geht so an die Switch
+    let displayName: String     // File name including extension — sent to the Switch as is
     let byteCount: Int64
     var state: State
 
@@ -32,8 +31,8 @@ nonisolated struct InstallItem: Identifiable, Equatable, Sendable {
 nonisolated enum ItemScanner {
     static let installableExtensions: Set<String> = ["nsp", "xci", "nsz", "xcz"]
 
-    /// Ordner werden rekursiv aufgelöst, Duplikate (gleicher Pfad) entfallen,
-    /// nicht installierbare Endungen werden ignoriert. Reihenfolge: stabil alphabetisch.
+    /// Directories are resolved recursively, duplicates (same path) are dropped,
+    /// and non-installable extensions are ignored. Order: stable alphabetical.
     static func scan(_ urls: [URL]) -> [InstallItem] {
         var seenPaths = Set<String>()
         var items: [InstallItem] = []
@@ -51,7 +50,7 @@ nonisolated enum ItemScanner {
             }
         }
 
-        // sort(by:) ist stabil — gleiche Namen behalten ihre Fundreihenfolge.
+        // sort(by:) is stable — equal names keep the order they were found in.
         return items.sorted {
             $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending
         }
@@ -64,7 +63,7 @@ nonisolated enum ItemScanner {
         }
         guard isDirectory.boolValue else { return [url] }
 
-        // errorHandler liefert true: unlesbare Unterordner überspringen statt abbrechen.
+        // errorHandler returns true: skip unreadable subdirectories instead of aborting.
         guard let enumerator = FileManager.default.enumerator(
             at: url,
             includingPropertiesForKeys: [.isRegularFileKey],

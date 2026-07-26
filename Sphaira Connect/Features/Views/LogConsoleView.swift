@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Aufklappbares Protokoll, monospaced, scrollt automatisch ans Ende.
+/// Collapsible log, monospaced, scrolls to the end automatically.
 struct LogConsoleView: View {
     var lines: [InstallerModel.LogLine]
     @Binding var isExpanded: Bool

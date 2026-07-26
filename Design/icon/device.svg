@@ -1,15 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <title>Handheld-Konsole — Ebenen-Asset für Icon Composer</title>
+  <title>Handheld console — layer asset for Icon Composer</title>
   <desc>
-    Herkunft: „nintendo switch“ von Mikicon, Noun Project, lizenziert unter
+    Origin: “nintendo switch” by Mikicon, Noun Project, licensed under
     CC BY 3.0 — https://thenounproject.com/browse/icons/term/nintendo-switch/
-    Die im Original eingebettete Beschriftung wurde entfernt; die Namensnennung
-    erfolgt in NOTICE.md, im README und im Über-Fenster der App.
+    The caption embedded in the original was removed; attribution is given in
+    NOTICE.md, in the README and in the app's About panel.
 
-    Bearbeitung: auf 1024×1024 zentriert (Faktor 7, Versatz 162/162), Füllung
-    auf einen schwachen senkrechten Verlauf gelegt. Ohne Glanzlicht, Schatten
-    und Deckkraft — das legt Icon Composer darüber.
-    Flache Füllung gewünscht? fill="url(#deviceFill)" durch fill="#FFFFFF" ersetzen.
+    Modifications: centred on 1024×1024 (scale 7, offset 162/162), fill replaced
+    with a subtle vertical gradient. Without specular highlight, shadow or
+    opacity — Icon Composer applies those.
+    Want a flat fill? Replace fill="url(#deviceFill)" with fill="#FFFFFF".
   </desc>
   <defs>
     <linearGradient id="deviceFill" x1="0" y1="0" x2="0" y2="1"

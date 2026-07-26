@@ -1,50 +1,51 @@
-Release Wrap für Sphaira Connect: Versionierung, Release Notes, Tests, Wiki und Commit. Eine App, ein Repo, eine Plattform (macOS).
+Release wrap for Sphaira Connect: versioning, release notes, tests, wiki and commit. One app, one repo, one platform (macOS).
 
-## Schritte
+## Steps
 
-1. **Änderungen seit dem letzten Release identifizieren:**
-   - `git log --oneline` und `git log --stat` seit dem letzten Release-Commit (Muster `chore: v…`) lesen.
-   - `git status` und `git diff` für noch nicht committete Arbeit prüfen.
-   - Alle Features, Fixes und Breaking Changes sammeln — jeweils mit der Datei, in der sie stehen.
-   - Nichts aufnehmen, was nicht im Code oder im Commit belegt ist.
+1. **Identify the changes since the last release:**
+   - Read `git log --oneline` and `git log --stat` since the last release commit (pattern `chore: v…`).
+   - Check `git status` and `git diff` for work that has not been committed yet.
+   - Collect all features, fixes and breaking changes — each one together with the file it lives in.
+   - Include nothing that is not backed by the code or by a commit.
 
-2. **Versions- und Build-Nummer prüfen:**
-   - Aktuellen Stand lesen:
+2. **Check the version and build number:**
+   - Read the current state:
      `grep -E "MARKETING_VERSION|CURRENT_PROJECT_VERSION" "Sphaira Connect.xcodeproj/project.pbxproj" | sort -u`
-   - Bump entscheiden:
-     - neue Funktionen → `MARKETING_VERSION` Minor anheben, `CURRENT_PROJECT_VERSION` zurück auf `1`
-     - nur Fixes → `MARKETING_VERSION` unverändert, `CURRENT_PROJECT_VERSION` um 1 erhöhen
-     - Breaking Change am USB-Protokoll oder Sitzungsablauf → Major anheben
-   - Beide Werte **nur** in `Sphaira Connect.xcodeproj/project.pbxproj` ändern (Single Source of Truth)
-     und dabei in **allen** Konfigurationen (Debug und Release) angleichen.
-   - Prüfen, dass `MACOSX_DEPLOYMENT_TARGET` noch zu den Release Notes passt.
+   - Decide on the bump:
+     - new functionality → raise the `MARKETING_VERSION` minor, reset `CURRENT_PROJECT_VERSION` to `1`
+     - fixes only → leave `MARKETING_VERSION` unchanged, increase `CURRENT_PROJECT_VERSION` by 1
+     - breaking change to the USB protocol or the session flow → raise the major
+   - Change both values **only** in `Sphaira Connect.xcodeproj/project.pbxproj` (single source of truth),
+     keeping them in sync across **all** configurations (Debug and Release).
+   - Verify that `MACOSX_DEPLOYMENT_TARGET` still matches the release notes.
 
-3. **Release Notes schreiben:**
-   - Build-Datei: `release_notes/v{VERSION}/macos_build_{N}.md`
-     ({VERSION} = `MARKETING_VERSION` auf drei Stellen normalisiert, {N} = `CURRENT_PROJECT_VERSION`).
-   - Kopfdaten: Version, Build, Datum, minimales macOS, Commit-Kurz-Hash.
-   - Darunter kurze Zusammenfassung, dann Tabelle mit den Spalten `Typ` (FEATURE/FIX/CHANGE) und `Beschreibung`, alles auf Deutsch.
-   - Einträge zum USB-Protokoll oder Sitzungsablauf verweisen zusätzlich auf den Wiki-Artikel (z. B. `protocol/install-session-flow`).
-   - `release_notes/v{VERSION}/README.md`: Builds-Tabelle (Build, Datum, Kurzbeschreibung) ergänzen bzw. neu anlegen.
-   - `release_notes/README.md`: Versionsübersicht um eine Zeile ergänzen.
+3. **Write the release notes:**
+   - Build file: `release_notes/v{VERSION}/macos_build_{N}.md`
+     ({VERSION} = `MARKETING_VERSION` normalised to three components, {N} = `CURRENT_PROJECT_VERSION`).
+   - Header data: version, build, date, minimum macOS, short commit hash.
+   - Below that a short summary, then a table with the columns `Type` (FEATURE/FIX/CHANGE) and `Description`, all in English.
+   - Entries about the USB protocol or the session flow additionally reference the wiki article (e.g. `protocol/install-session-flow`).
+   - `release_notes/v{VERSION}/README.md`: extend the builds table (build, date, short description), or create it.
+   - `release_notes/README.md`: add one line to the version overview.
 
-4. **Tests laufen lassen (beide Stufen, beide müssen grün sein):**
-   - Kernlogik im SwiftPM-Paket:
+4. **Run the tests (both stages, both must be green):**
+   - Core logic in the SwiftPM package:
      `cd SphairaCoreTests && swift test`
-   - App-Build in beiden Konfigurationen:
+   - App build in both configurations:
      `xcodebuild -project "Sphaira Connect.xcodeproj" -scheme "Sphaira Connect" -configuration Debug build`
      `xcodebuild -project "Sphaira Connect.xcodeproj" -scheme "Sphaira Connect" -configuration Release build`
-   - Bei Fehlern: erst reparieren, dann weiter — kein Wrap auf rotem Stand.
+   - On failure: fix first, then continue — never wrap on a red state.
 
-5. **Wiki-Update (PFLICHT — zu jedem Wrap gehört IMMER ein Wiki-Update):**
-   - Betroffene Artikel unter `.wiki/articles/*` gegen den **aktuellen** Code aktualisieren: Inhalt, `code_refs`-Pfade, `updated:`-Datum.
-   - `code_refs` vor dem Schreiben mit `ls` prüfen — sie müssen auf tatsächlich existierende Dateien zeigen.
-   - Neue Features → neuen Artikel anlegen und in `related` beidseitig verlinken.
-   - Geänderte oder entfernte Konzepte korrigieren, nicht als `status: current` veraltet stehen lassen.
-   - Änderungen am Protokoll oder am Sitzungsablauf zusätzlich gegen `CONTRACT.md` abgleichen.
-   - Bei größeren Releases: vollen Freshness-Sweep über alle Kategorien erwägen.
+5. **Wiki update (MANDATORY — every wrap ALWAYS includes a wiki update):**
+   - Bring the affected articles under `.wiki/articles/*` in line with the **current** code: content, `code_refs` paths, `updated:` date.
+   - Check `code_refs` with `ls` before writing them — they must point at files that actually exist.
+   - New features → create a new article and cross-link it in `related` in both directions.
+   - Correct changed or removed concepts; do not leave them stale as `status: current`.
+   - Changes to the protocol or the session flow are additionally reconciled against `CONTRACT.md`.
+   - For larger releases: consider a full freshness sweep across all categories.
 
-6. **Git Commit:**
-   - `git add -A && git commit -m "chore: v{VERSION} (Build {N}) — {Zusammenfassung}"`
-   - Nur committen, wenn es Änderungen gibt.
-   - **Die Commit-Message enthält keinerlei Claude- oder Anthropic-Signatur:** kein `Co-Authored-By`-Trailer, kein „Generated with"-Hinweis, keine Erwähnung im Betreff oder Rumpf. Der Commit gehört allein dem Benutzer.
+6. **Git commit:**
+   - `git add -A && git commit -m "chore: v{VERSION} (build {N}) — {summary}"`
+   - Only commit if there are changes.
+   - **Commit messages are written in ENGLISH.**
+   - **The commit message contains no Claude or Anthropic signature whatsoever:** no `Co-Authored-By` trailer, no "Generated with" note, no mention in the subject or the body. The commit belongs to the user alone.

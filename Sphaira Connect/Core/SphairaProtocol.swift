@@ -8,8 +8,8 @@ nonisolated enum TransferFlags {
     static let stream: UInt32 = 1 << 0
 }
 
-/// Drahtformat: sechs UInt32 little-endian — magic, arg2, arg3, arg4, arg5, crc32c.
-/// Die CRC32C läuft über die ersten 20 Bytes.
+/// Wire format: six little-endian UInt32 — magic, arg2, arg3, arg4, arg5, crc32c.
+/// The CRC32C covers the first 20 bytes.
 nonisolated struct Packet: Equatable, Sendable {
     static let magic: UInt32 = 0x5350_4830
     static let byteCount: Int = 24
@@ -37,7 +37,7 @@ nonisolated struct Packet: Equatable, Sendable {
     }
 
     static func decode(_ bytes: [UInt8]) throws -> Packet {
-        // Prüfreihenfolge laut Vertrag: erst Länge, dann Magic, dann CRC.
+        // Validation order per the contract: length first, then magic, then CRC.
         guard bytes.count == byteCount else {
             throw InstallError.shortPacket(expected: byteCount, got: bytes.count)
         }

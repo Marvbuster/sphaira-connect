@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <title>Kugel — Ebenen-Asset für Icon Composer</title>
+  <title>Sphere — layer asset for Icon Composer</title>
   <desc>
-    Freistehende Kugel auf transparentem Grund, 1024×1024, Mittelpunkt 512/512,
-    Radius 340. Der Verlauf ist radial und sitzt nach links oben versetzt, damit
-    die Fläche plastisch wirkt. Bewusst OHNE Glanzlicht, Schatten und Deckkraft —
-    Spiegelung und Transparenz kommen aus Icon Composer.
-    Umfärben: nur die drei stop-color-Werte unten ändern.
+    Free-standing sphere on a transparent background, 1024×1024, centre 512/512,
+    radius 340. The gradient is radial and offset towards the upper left so the
+    surface reads as volumetric. Deliberately WITHOUT specular highlight, shadow
+    or opacity — reflection and transparency come from Icon Composer.
+    Recolouring: change only the stop-color values below.
   </desc>
   <defs>
     <radialGradient id="sphereFill" cx="0.36" cy="0.30" r="0.92">

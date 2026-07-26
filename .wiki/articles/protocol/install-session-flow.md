@@ -1,9 +1,9 @@
 ---
-title: "Ablauf einer Installationssitzung — der Zustandsautomat"
+title: "Install Session Flow — The State Machine"
 created: 2026-07-26
 updated: 2026-07-26
 category: protocol
-tags: [protokoll, zustandsautomat, installsession, transfer, fehlerbehandlung]
+tags: [protocol, state-machine, installsession, transfer, error-handling]
 status: current
 related:
   - protocol/sph0-wire-protocol
@@ -20,17 +20,15 @@ code_refs:
   - CONTRACT.md
 ---
 
-# Ablauf einer Installationssitzung
+# Install Session Flow
 
-Der Sitzungsablauf ist **kein Vorschlag, sondern eine Reihenfolge, von der nicht abgewichen
-werden darf**: Die Switch wartet an jedem Schritt blockierend auf eine Antwort. Ein
-ausgelassenes Paket, ein zusätzliches Paket oder ein abrupt geschlossener Bus lassen Sphaira
-auf der Konsole hängen — dann hilft nur noch ein Neustart der Homebrew-App. `CONTRACT.md`
-schreibt den Ablauf deshalb Schritt für Schritt fest, und `InstallSession.run` setzt genau
-diesen Ablauf als flachen Zustandsautomaten um: **Verbinden → Namensliste → Kommandoschleife
-→ Dateischleife.**
+The session flow is **not a suggestion but an order that must not be deviated from**: at every step
+the Switch blocks waiting for an answer. A skipped packet, an extra packet or an abruptly closed
+bus leaves Sphaira hanging on the console — and then only a restart of the homebrew app helps.
+`CONTRACT.md` therefore pins the flow down step by step, and `InstallSession.run` implements
+exactly that flow as a flat state machine: **connect → file list → command loop → file loop.**
 
-## Gesamtbild
+## The whole picture
 
 ```mermaid
 sequenceDiagram
@@ -42,25 +40,25 @@ sequenceDiagram
     M->>S: run(onLog, onDevice, onProgress, onItemState, cancel)
     S->>T: open(cancel)
     T-->>S: DeviceInfo
-    S-->>M: onDevice → Phase .transferring
-    N->>S: Paket (Inhalt egal, nur Magic/CRC zählen)
-    S->>N: ok(arg3 = Länge der Namensliste)
-    S->>N: rohe Namensliste (UTF-8)
-    loop Kommandoschleife
-        N->>S: Paket
+    S-->>M: onDevice → phase .transferring
+    N->>S: packet (contents irrelevant, only magic/CRC matter)
+    S->>N: ok(arg3 = length of the file list)
+    S->>N: raw file list (UTF-8)
+    loop command loop
+        N->>S: packet
         alt command == 1 (open)
             S->>S: transferFile(index: arg3)
         else command == 0 (quit)
             S->>N: ok(0, 0)
             S-->>M: onLog "Switch hat die Sitzung beendet."
-        else sonst
+        else otherwise
             S->>N: error(0, 0)
             S-->>M: throw unexpectedCommand
         end
     end
 ```
 
-## 1. Verbinden
+## 1. Connect
 
 ```swift
 defer { transport.close() }
@@ -68,15 +66,15 @@ let device = try transport.open(cancel: cancel)
 onDevice(device)
 ```
 
-`open` blockiert, bis eine Switch mit `0x057E:0x3000` am Bus hängt (Versuche alle 250 ms),
-beansprucht Interface 0 und liest die Gerätebeschreibungen ([[usb/libusb-transport]]). Das `defer` steht **vor** dem
-ersten `try` — egal auf welchem Pfad die Sitzung endet, der Bus wird freigegeben.
+`open` blocks until a Switch with `0x057E:0x3000` is on the bus (retries every 250 ms), claims
+interface 0 and reads the device descriptors ([[usb/libusb-transport]]). The `defer` sits **before**
+the first `try` — no matter which path the session ends on, the bus is released.
 
-Bemerkenswert ist, was hier *nicht* passiert: Es gibt keine Protokollzeile „Warte auf die
-Switch". Die schreibt `InstallerModel.start()` bereits vor dem Start der Sitzung; ein
-zweites `onLog` würde sie nur doppeln.
+Note what does *not* happen here: there is no log line "waiting for the Switch". That one is
+written by `InstallerModel.start()` before the session even begins; a second `onLog` would only
+duplicate it.
 
-## 2. Namensliste
+## 2. File list
 
 ```swift
 var tableBytes: [UInt8] = []
@@ -84,32 +82,32 @@ for item in items {
     tableBytes.append(contentsOf: Array((item.displayName + "\n").utf8))
 }
 
-// Das erste Paket der Switch trägt keinen Inhalt — decode prüft
-// Magic und CRC, mehr zählt hier nicht.
+// The Switch's first packet carries no content — decode checks
+// magic and CRC, nothing else matters here.
 _ = try transport.readPacket(cancel: cancel)
 try transport.send(.ok, arg3: UInt32(tableBytes.count), arg4: 0, cancel: cancel)
 try transport.write(tableBytes, cancel: cancel)
 ```
 
-Das Format ist so schlicht wie möglich: **Dateiname plus `\n`, UTF-8, ohne Kopf, ohne
-Trennzeichen-Escaping, ohne abschließende Sonderbehandlung.** Auch der letzte Eintrag endet
-mit `\n`. Die Länge in Bytes (nicht in Zeichen!) geht in `arg3` des OK-Pakets voraus, damit
-die Switch weiß, wie viel sie einlesen muss.
+The format is as plain as it gets: **file name plus `\n`, UTF-8, no header, no escaping of the
+separator, no special handling of the last entry.** The last entry ends with `\n` as well. The
+length in bytes (not in characters!) is sent ahead in `arg3` of the OK packet so the Switch knows
+how much to read in.
 
-Zwei Konsequenzen, die man kennen muss:
+Two consequences you have to be aware of:
 
-- **Ein `\n` im Dateinamen zerlegt den Eintrag in zwei.** Auf APFS ist das ein zulässiges
-  Zeichen. Der Scanner filtert es nicht ([[architecture/queue-and-file-scanning]]) — die
-  Indizes würden verrutschen und die Switch die falsche Datei anfordern.
-- **Die Reihenfolge der Liste ist der Index.** Was die Switch später als `packet.arg3` eines
-  `open` schickt, ist die Position in genau dieser Liste. Deshalb darf sich `items` während
-  der Sitzung nicht ändern; `InstallerModel` sperrt `remove`/`clearAll` über `isBusy`.
+- **A `\n` inside a file name splits the entry in two.** On APFS that is a legal character. The
+  scanner does not filter it out ([[architecture/queue-and-file-scanning]]) — the indices would
+  shift and the Switch would request the wrong file.
+- **The order of the list *is* the index.** What the Switch later sends as `packet.arg3` of an
+  `open` is the position in exactly this list. This is why `items` must not change during the
+  session; `InstallerModel` locks `remove`/`clearAll` via `isBusy`.
 
-Das erste gelesene Paket wird bewusst verworfen. Es ist der Anstoß der Switch („ich bin
-bereit"); Magic und CRC prüft `decode` trotzdem, sodass ein falsches Gegenüber sofort
-auffliegt ([[protocol/sph0-wire-protocol]]).
+The first packet read is deliberately discarded. It is the Switch's kick-off ("I am ready");
+`decode` still checks magic and CRC, so a wrong peer is exposed immediately
+([[protocol/sph0-wire-protocol]]).
 
-## 3. Kommandoschleife
+## 3. Command loop
 
 ```swift
 while true {
@@ -135,15 +133,14 @@ while true {
 }
 ```
 
-**Die Switch treibt die Sitzung, nicht der Host.** Sie entscheidet, welche Datei wann
-angefordert wird, ob eine Datei doppelt kommt und wann Schluss ist. Der Host ist reiner
-Beantworter. Deshalb gibt es auch keine „Sitzung fertig"-Erkennung über die Liste: Fertig ist,
-wenn `quit` kommt.
+**The Switch drives the session, not the host.** It decides which file is requested when, whether a
+file comes twice and when things are over. The host is a pure responder. That is also why there is
+no "session complete" detection based on the list: it is done when `quit` arrives.
 
-Die Indexprüfung schickt vor dem Werfen noch ein Fehlerpaket. Das ist der Unterschied
-zwischen „Sphaira zeigt eine Fehlermeldung" und „Sphaira wartet ewig".
+The index check still sends an error packet before throwing. That is the difference between
+"Sphaira shows an error message" and "Sphaira waits forever".
 
-## 4. Dateiübertragung
+## 4. File transfer
 
 ```swift
 let file = try FileHandle(forReadingFrom: item.url)
@@ -162,7 +159,7 @@ while true {
     }
 
     try file.seek(toOffset: offset)
-    // nil bedeutet Dateiende — als leere Antwort behandeln.
+    // nil means end of file — treat it as an empty answer.
     chunk = [UInt8](try file.read(upToCount: requested) ?? Data())
 
     try transport.send(.ok, arg3: UInt32(chunk.count), arg4: CRC32C.checksum(chunk), cancel: cancel)
@@ -173,38 +170,37 @@ while true {
 }
 ```
 
-Vier Punkte, die nicht offensichtlich sind:
+Four points that are not obvious:
 
-1. **Die gemeldete Größe stammt aus `seekToEnd()`, nicht aus `item.byteCount`.** Maßgeblich
-   ist der Zustand der Datei im Moment der Übertragung; `byteCount` aus dem Scan dient nur
-   der Gesamtsumme in der Oberfläche.
-2. **Die Switch liest wahlfrei, nicht sequenziell.** Jedes Paket bringt eine eigene Position;
-   der Host springt per `seek(toOffset:)` dorthin. Bereiche dürfen mehrfach angefordert
-   werden. Genau deshalb kann der Fortschritt nicht aus der Position abgeleitet werden —
-   siehe [[protocol/progress-tracking]].
-3. **`offset == 0 && requested == 0` ist das Ende-Signal**, keine Anforderung von null Bytes
-   an Position null. Der Host quittiert mit `ok(0, 0)` und verlässt die Dateischleife.
-4. **Reihenfolge ist zwingend: erst das Kopfpaket, dann die Daten.** Das OK-Paket meldet in
-   `arg3` die tatsächlich gelesene Länge (die am Dateiende kleiner als `requested` sein kann)
-   und in `arg4` die CRC32C des Blocks. Die Switch weiß danach, wie viele Bytes gleich
-   kommen, und kann sie prüfen. Ein `read`, das `nil` liefert, wird als leerer Block
-   beantwortet — `arg3 = 0`, `arg4 = CRC32C([]) = 0` — statt in einen Fehler zu laufen.
+1. **The reported size comes from `seekToEnd()`, not from `item.byteCount`.** What counts is the
+   state of the file at the moment of transfer; `byteCount` from the scan only feeds the overall
+   total shown in the UI.
+2. **The Switch reads at random, not sequentially.** Every packet brings its own position; the host
+   jumps there with `seek(toOffset:)`. Ranges may be requested more than once. Precisely for that
+   reason progress cannot be derived from the position — see [[protocol/progress-tracking]].
+3. **`offset == 0 && requested == 0` is the end-of-file signal**, not a request for zero bytes at
+   position zero. The host acknowledges with `ok(0, 0)` and leaves the file loop.
+4. **The order is mandatory: header packet first, then the data.** The OK packet reports the length
+   actually read in `arg3` (which near the end of the file may be smaller than `requested`) and the
+   CRC32C of the block in `arg4`. The Switch then knows how many bytes are about to arrive and can
+   verify them. A `read` that returns `nil` is answered as an empty block — `arg3 = 0`,
+   `arg4 = CRC32C([]) = 0` — instead of running into an error.
 
-## 5. Wenn eine Datei scheitert
+## 5. When a file fails
 
-Der interessanteste Teil des Automaten. `transferFile` liefert `Bool` statt zu werfen:
+The most interesting part of the machine. `transferFile` returns `Bool` instead of throwing:
 
 ```swift
-/// Liefert `true`, wenn die Datei vollständig übertragen wurde.
+/// Returns `true` if the file was transferred completely.
 ///
-/// Bei einem Dateifehler geht ein Fehlerpaket an die Switch. Sphaira bricht
-/// daraufhin die gesamte Installation ab, schickt aber noch den Abschluss-
-/// beziehungsweise Quit-Befehl — den beantwortet die Kommandoschleife regulär.
-/// So endet die Sitzung geordnet statt mit einem abrupten USB-Abriss.
+/// On a file error an error packet goes to the Switch. Sphaira then aborts the
+/// whole installation, but still sends the closing respectively quit command —
+/// which the command loop answers as usual. That way the session ends in an
+/// orderly fashion instead of with an abrupt USB drop.
 ```
 
-Konkret: Lässt sich die Datei nicht öffnen oder schlägt ein `seek`/`read` mittendrin fehl
-(entferntes Volume, entzogene Rechte), ruft `reportFailure` auf:
+Concretely: if the file cannot be opened, or a `seek`/`read` fails halfway through (volume removed,
+permissions withdrawn), it calls `reportFailure`:
 
 ```swift
 func reportFailure(_ reason: String) throws {
@@ -214,16 +210,16 @@ func reportFailure(_ reason: String) throws {
 }
 ```
 
-— und kehrt mit `false` zurück. Die **Kommandoschleife läuft weiter** und beantwortet das
-danach eintreffende `quit` ganz normal. Würde `transferFile` stattdessen werfen, liefe das
-`defer { transport.close() }` sofort los, die Switch bekäme mitten im Warten den Bus unter
-den Füßen weggezogen und Sphaira stünde. Die Rückgabe `false` ist also kein Stilmittel,
-sondern der Unterschied zwischen einem sauberen und einem hängenden Abbruch.
+— and returns `false`. The **command loop keeps running** and answers the `quit` that arrives
+afterwards perfectly normally. If `transferFile` threw instead, the `defer { transport.close() }`
+would fire immediately, the bus would be pulled out from under the Switch while it is waiting, and
+Sphaira would hang. Returning `false` is therefore not a stylistic choice but the difference
+between a clean shutdown and a hung one.
 
-Das Fehlerpaket ist außerdem dasselbe (`error, 0, 0`), das die Kommandoschleife bei
-unbekannten Kommandos schickt — die Switch braucht nur einen Fehlerfall zu kennen.
+The error packet is moreover the same one (`error, 0, 0`) that the command loop sends for unknown
+commands — the Switch only has to know a single failure case.
 
-## 6. Buchführung und Meldungen
+## 6. Bookkeeping and messages
 
 ```swift
 if transferred {
@@ -231,32 +227,30 @@ if transferred {
 }
 ```
 
-Nur **tatsächlich übertragene** Dateien erhöhen `completedBytes`; sonst spränge der
-Gesamtfortschritt über eine gescheiterte Datei hinweg und zeigte am Ende mehr Bytes an, als je
-über den Bus gingen. Der Gesamtfortschritt eines laufenden Transfers ist entsprechend
-`completedBytes + tracker.clampedSent`.
+Only files that were **actually transferred** increase `completedBytes`; otherwise the overall
+progress would jump over a failed file and end up showing more bytes than ever went over the wire.
+The overall progress of a running transfer is accordingly `completedBytes + tracker.clampedSent`.
 
-Die Zustandsmeldungen sind knapp:
+The state messages are terse:
 
-| Zeitpunkt | `onItemState` | `onLog` |
+| Moment | `onItemState` | `onLog` |
 |---|---|---|
-| Dateibeginn | `.transferring` | „Übertrage *Name* …" |
-| Dateifehler | `.failed(Grund)` | „Fehler bei *Name*: *Grund*" |
-| Dateiende | `.done` | „*Name* fertig übertragen." |
-| Sitzungsende | — | „Switch hat die Sitzung beendet." |
+| File start | `.transferring` | "Übertrage *name* …" |
+| File error | `.failed(reason)` | "Fehler bei *name*: *reason*" |
+| File end | `.done` | "*name* fertig übertragen." |
+| Session end | — | "Switch hat die Sitzung beendet." |
 
-`InstallerModel` zählt `.done`-Meldungen im `DoneCounter` mit und meldet daraus
-`.finished(transferred:)` — Einzelheiten in [[architecture/concurrency-and-cancellation]].
-Vor `onItemState(index, .done)` steht ein erzwungenes `emitProgress(force: true)`, damit die
-letzte Anzeige nicht der 100-ms-Drosselung zum Opfer fällt.
+`InstallerModel` tallies `.done` messages in the `DoneCounter` and derives
+`.finished(transferred:)` from it — details in [[architecture/concurrency-and-cancellation]].
+Before `onItemState(index, .done)` there is a forced `emitProgress(force: true)`, so that the final
+display does not fall victim to the 100 ms throttling.
 
-## 7. Abbruch
+## 7. Cancellation
 
-`cancel` wird als Closure durch **jeden** Transportaufruf gereicht und in den Timeout-Schleifen
-abgefragt. Ein Abbruch wirft `InstallError.cancelled` — aus `open`, `read` oder `write`, je
-nachdem wo die Sitzung gerade steht. Der Rest folgt automatisch: `defer` schließt den Bus,
-`InstallerModel` fängt `InstallError.cancelled` gesondert und meldet `.cancelled` statt
-`.failed`. Anders als beim Dateifehler wird der Switch dabei **nichts** mitgeteilt: Der Bus
-wird mitten im Protokoll geschlossen. Auf der Konsole ist danach mit einer hängenden oder
-abgebrochenen Installation zu rechnen — das ist der bewusst in Kauf genommene Preis dafür,
-dass ein Abbruch sofort greift.
+`cancel` is passed as a closure through **every** transport call and polled inside the timeout
+loops. A cancellation throws `InstallError.cancelled` — out of `open`, `read` or `write`, depending
+on where the session currently is. The rest follows automatically: `defer` closes the bus,
+`InstallerModel` catches `InstallError.cancelled` separately and reports `.cancelled` instead of
+`.failed`. Unlike the file-error case, the Switch is told **nothing**: the bus is closed in the
+middle of the protocol. On the console you should expect a hung or aborted installation afterwards
+— that is the deliberately accepted price for a cancellation that takes effect immediately.

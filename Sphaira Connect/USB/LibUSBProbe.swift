@@ -2,8 +2,8 @@
 //  LibUSBProbe.swift
 //  Sphaira Connect
 //
-//  Rauchtest der libusb-Anbindung: prüft, ob die Bibliothek gelinkt ist und
-//  ob eine Switch am Bus hängt. Wird von der Statusanzeige benutzt.
+//  Smoke test for the libusb binding: checks that the library is linked and
+//  whether a Switch is present on the bus. Used by the status indicator.
 //
 
 import Foundation
@@ -13,7 +13,7 @@ enum LibUSBProbe {
     static let productID: UInt16 = 0x3000
 
     static func version() -> String {
-        guard let info = libusb_get_version() else { return "unbekannt" }
+        guard let info = libusb_get_version() else { return "unknown" }
         let v = info.pointee
         return "\(v.major).\(v.minor).\(v.micro)"
     }

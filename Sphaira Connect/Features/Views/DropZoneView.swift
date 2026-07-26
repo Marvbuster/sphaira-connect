@@ -2,8 +2,8 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 
-/// Ablagefläche für Dateien und Ordner. Klick öffnet den Auswahl-Dialog,
-/// Ablegen per Drag-and-drop mit deutlicher Hervorhebung beim Überfahren.
+/// Drop area for files and folders. A click opens the file picker; drag-and-drop
+/// highlights the area clearly while hovering.
 struct DropZoneView: View {
     var isCompact: Bool = false
     var isEnabled: Bool = true
@@ -71,7 +71,7 @@ struct DropZoneView: View {
         for provider in usable {
             _ = provider.loadObject(ofClass: URL.self) { url, _ in
                 guard let url else { return }
-                // Der Provider liefert auf einer beliebigen Queue — zurück auf den MainActor.
+                // The provider delivers on an arbitrary queue — hop back to the MainActor.
                 Task { @MainActor in deliver([url]) }
             }
         }

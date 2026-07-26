@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Hauptansicht: Hintergrund mit Zustands-Farbschleier, Kopfzeile in der
-/// Titelleisten-Zone, Ablage bzw. Warteschlange, Fortschritt, Protokoll, Aktionen.
+/// Main view: background with a state-dependent colour wash, header in the title
+/// bar zone, drop zone or queue, progress, log, actions.
 struct RootView: View {
     @State private var model = InstallerModel()
 
@@ -42,12 +42,12 @@ struct RootView: View {
                 .padding(.top, Spacing.md)
                 .padding(.bottom, Spacing.lg)
 
-            // Konfiguriert das NSWindow und lässt es dem Inhalt animiert folgen.
+            // Configures the NSWindow and lets it follow the content with animation.
             WindowStyleConfigurator(sizeKey: sizeKey)
                 .allowsHitTesting(false)
                 .frame(width: 0, height: 0)
         }
-        // Kopfzeile in der Titelleisten-Zone, auf Höhe der Ampelknöpfe.
+        // Header in the title bar zone, level with the traffic-light buttons.
         .overlay(alignment: .topLeading) {
             Text("\(Text("Sphaira ").fontWeight(.medium))\(Text("Connect").fontWeight(.heavy))")
                 .font(.system(size: 14))

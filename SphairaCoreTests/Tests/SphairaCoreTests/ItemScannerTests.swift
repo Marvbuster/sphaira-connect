@@ -4,7 +4,7 @@ import Testing
 
 @Suite("ItemScanner")
 struct ItemScannerTests {
-    /// Legt eine temporäre Ordnerstruktur an und räumt sie nach dem Testlauf ab.
+    /// Creates a temporary directory tree and tears it down after the test run.
     private func withFixture<T>(_ body: (URL) throws -> T) throws -> T {
         let root = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("SphairaScannerTests-\(UUID().uuidString)", isDirectory: true)
@@ -12,18 +12,18 @@ struct ItemScannerTests {
         try fm.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? fm.removeItem(at: root) }
 
-        // Verschachtelte Ordner, gemischte Endungen (auch groß), Nicht-Installierbares
+        // Nested directories, mixed extensions (including uppercase), non-installable files
         try fm.createDirectory(at: root.appendingPathComponent("sub/deep"), withIntermediateDirectories: true)
         let files: [(String, Int)] = [
             ("alpha.nsp", 100),
-            ("Bravo.XCI", 200),              // Großschreibung der Endung
+            ("Bravo.XCI", 200),              // uppercase extension
             ("sub/charlie.nsz", 300),
             ("sub/deep/delta.xcz", 400),
-            ("sub/deep/echo.NSP", 500),      // Großschreibung, tief verschachtelt
-            ("notes.txt", 10),               // nicht installierbar
-            ("sub/README.md", 20),           // nicht installierbar
-            ("sub/deep/archive.zip", 30),    // nicht installierbar
-            ("noextension", 40),             // keine Endung
+            ("sub/deep/echo.NSP", 500),      // uppercase, deeply nested
+            ("notes.txt", 10),               // not installable
+            ("sub/README.md", 20),           // not installable
+            ("sub/deep/archive.zip", 30),    // not installable
+            ("noextension", 40),             // no extension
         ]
         for (path, size) in files {
             let data = Data(repeating: 0xAB, count: size)
@@ -32,7 +32,7 @@ struct ItemScannerTests {
         return try body(root)
     }
 
-    @Test("Rekursion, Endungsfilter und Groß-/Kleinschreibung")
+    @Test("Recursion, extension filter and case insensitivity")
     func recursionAndFilter() throws {
         try withFixture { root in
             let items = ItemScanner.scan([root])
@@ -42,7 +42,7 @@ struct ItemScannerTests {
         }
     }
 
-    @Test("byteCount entspricht der tatsächlichen Dateigröße")
+    @Test("byteCount matches the actual file size")
     func byteCounts() throws {
         try withFixture { root in
             let items = ItemScanner.scan([root])
@@ -55,11 +55,11 @@ struct ItemScannerTests {
         }
     }
 
-    @Test("Duplikate (gleicher Pfad) entfallen")
+    @Test("Duplicates (same path) are dropped")
     func duplicatesRemoved() throws {
         try withFixture { root in
             let file = root.appendingPathComponent("alpha.nsp")
-            // Ordner + zweimal dieselbe Datei, einmal davon unnormalisiert
+            // Directory + the same file twice, one of them unnormalized
             let unnormalized = root.appendingPathComponent("sub/../alpha.nsp")
             let items = ItemScanner.scan([root, file, unnormalized, root])
             #expect(items.count == 5)
@@ -67,33 +67,33 @@ struct ItemScannerTests {
         }
     }
 
-    @Test("Einzelne Datei-URLs funktionieren ohne Ordner")
+    @Test("Individual file URLs work without a directory")
     func directFileURLs() throws {
         try withFixture { root in
             let items = ItemScanner.scan([
                 root.appendingPathComponent("sub/charlie.nsz"),
                 root.appendingPathComponent("alpha.nsp"),
             ])
-            // Stabil alphabetisch, unabhängig von der Übergabereihenfolge
+            // Stable alphabetical order, regardless of the order passed in
             #expect(items.map(\.displayName) == ["alpha.nsp", "charlie.nsz"])
         }
     }
 
-    @Test("Nicht installierbare Datei direkt übergeben wird ignoriert")
+    @Test("A non-installable file passed in directly is ignored")
     func directNonInstallableIgnored() throws {
         try withFixture { root in
             #expect(ItemScanner.scan([root.appendingPathComponent("notes.txt")]).isEmpty)
         }
     }
 
-    @Test("Nicht existierende URL ergibt leeres Ergebnis")
+    @Test("A non-existent URL yields an empty result")
     func missingURL() {
         let ghost = URL(fileURLWithPath: "/nonexistent/\(UUID().uuidString)/x.nsp")
         #expect(ItemScanner.scan([ghost]).isEmpty)
         #expect(ItemScanner.scan([]).isEmpty)
     }
 
-    @Test("Unlesbare Datei wird übersprungen statt zu scheitern")
+    @Test("An unreadable file is skipped instead of failing")
     func unreadableFileSkipped() throws {
         try withFixture { root in
             let locked = root.appendingPathComponent("locked.nsp")
@@ -108,7 +108,7 @@ struct ItemScannerTests {
         }
     }
 
-    @Test("Neue Items starten im Zustand queued mit displayName = Dateiname")
+    @Test("New items start in the queued state with displayName = file name")
     func initialItemState() {
         let item = InstallItem(url: URL(fileURLWithPath: "/tmp/Homebrew Launcher.nsp"), byteCount: 123)
         #expect(item.state == .queued)
@@ -116,7 +116,7 @@ struct ItemScannerTests {
         #expect(item.byteCount == 123)
     }
 
-    @Test("Vertragskonstante installableExtensions")
+    @Test("Contract constant installableExtensions")
     func extensionsConstant() {
         #expect(ItemScanner.installableExtensions == ["nsp", "xci", "nsz", "xcz"])
     }

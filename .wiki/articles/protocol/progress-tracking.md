@@ -1,9 +1,9 @@
 ---
-title: "Fortschrittsberechnung — Summenzählung statt Hochwassermarke"
+title: "Progress Calculation — Cumulative Counting Instead of a High-Water Mark"
 created: 2026-07-26
 updated: 2026-07-26
 category: protocol
-tags: [fortschritt, progresstracker, xci, durchsatz, drosselung, tests]
+tags: [progress, progresstracker, xci, throughput, throttling, tests]
 status: current
 related:
   - protocol/install-session-flow
@@ -19,34 +19,33 @@ code_refs:
   - SphairaCoreTests/Tests/SphairaCoreTests/ProgressTrackerTests.swift
 ---
 
-# Fortschrittsberechnung
+# Progress Calculation
 
-`CONTRACT.md` schrieb ursprünglich eine Hochwassermarke vor:
-`max(bisher, offset + gelesen)`. Das klingt vernünftig und ist in freier Wildbahn sofort
-gescheitert — bei XCI-Dateien stand der Balken nach dem ersten Block auf 100 %. Der Grund
-liegt im Protokoll: **Die Switch liest wahlfrei, nicht sequenziell**, und beginnt bei XCI
-gerne mit Kopf- und Partitionsdaten nahe dem Dateiende. Die Lösung ist ein eigener Typ,
-`Core/ProgressTracker.swift`, der die angeforderte *Position* vollständig ignoriert und
-stattdessen die **tatsächlich übertragenen Bytes summiert**.
+`CONTRACT.md` originally prescribed a high-water mark: `max(so far, offset + bytes read)`. That
+sounds reasonable and failed immediately in the field — for XCI files the bar sat at 100 % after
+the very first block. The reason lies in the protocol: **the Switch reads at random, not
+sequentially**, and with XCI it likes to start with header and partition data near the end of the
+file. The fix is a dedicated type, `Core/ProgressTracker.swift`, which ignores the requested
+*position* entirely and instead **sums the bytes actually transferred**.
 
-## Der Fehler
+## The bug
 
-Sphaira fordert Blöcke über `dataOffset`/`dataSize` an
-([[protocol/sph0-wire-protocol]]). Bei einer 17,5-GB-XCI kann der allererste Block bei
-Offset ~17,4 GB liegen und 64 KB groß sein. Mit einer Hochwassermarke ergäbe das:
+Sphaira requests blocks via `dataOffset`/`dataSize` ([[protocol/sph0-wire-protocol]]). For a
+17.5 GB XCI the very first block can sit at offset ~17.4 GB and be 64 KB in size. With a high-water
+mark that would give:
 
 ```
-max(0, 17_400_000_000 + 65_536) / 17_500_000_000 ≈ 99,4 %
+max(0, 17_400_000_000 + 65_536) / 17_500_000_000 ≈ 99.4 %
 ```
 
-— nach 64 übertragenen Kilobyte. Der Rest der Übertragung liefe dann eine gefühlte Ewigkeit
-auf einem Balken, der bereits am Anschlag steht; Restzeit und Durchsatz wären ebenso
-sinnlos. Der Test hält den Fall als Regressionsschutz fest:
+— after 64 transferred kilobytes. The rest of the transfer would then run for what feels like
+forever against a bar that is already pegged; remaining time and throughput would be equally
+meaningless. The test captures the case as regression protection:
 
 ```swift
-/// Der Fehler, der in freier Wildbahn auftrat: Die Switch fragt bei einer XCI
-/// früh Daten nahe dem Dateiende an. Eine Hochwassermarke über die höchste
-/// Position stünde dadurch sofort bei 100 %.
+/// The bug that occurred in the field: with an XCI the Switch requests data
+/// near the end of the file early on. A high-water mark over the highest
+/// position would therefore sit at 100 % immediately.
 @Test("Anfragen nahe dem Dateiende treiben den Fortschritt nicht hoch")
 func lateOffsetDoesNotInflateProgress() {
     var tracker = ProgressTracker(totalBytes: 17_500_000_000, startNanos: 0)
@@ -55,21 +54,21 @@ func lateOffsetDoesNotInflateProgress() {
 }
 ```
 
-## Die Korrektur: summieren und klemmen
+## The correction: sum up and clamp
 
 ```swift
-/// Zählt einen übertragenen Block.
+/// Records a transferred block.
 ///
-/// Die von der Switch angeforderte Position geht bewusst NICHT ein: Sie liest
-/// Kopf- und Partitionsdaten quer über die Datei, oft früh nahe dem Ende. Eine
-/// Hochwassermarke über die höchste Position stünde dadurch sofort bei 100 %.
+/// The position requested by the Switch is deliberately NOT taken into account:
+/// it reads header and partition data across the file, often early on near the
+/// end. A high-water mark over the highest position would sit at 100 % at once.
 mutating func record(chunkSize: Int) {
     guard chunkSize > 0 else { return }
     sentBytes += Int64(chunkSize)
 }
 
-/// Übertragene Bytes, auf die Dateigröße geklemmt — die Switch darf einen
-/// Bereich auch mehrfach anfordern.
+/// Transferred bytes, clamped to the file size — the Switch is allowed to
+/// request a range more than once.
 var clampedSent: Int64 { min(sentBytes, totalBytes) }
 
 var fraction: Double {
@@ -78,27 +77,26 @@ var fraction: Double {
 }
 ```
 
-Die Summenzählung hat eine Kehrseite, und die ist der Grund für `clampedSent`: Fordert
-Sphaira einen Bereich zweimal an — was das Protokoll erlaubt —, zählt der Tracker ihn
-zweimal. `sentBytes` misst damit *Busverkehr*, nicht *Dateiabdeckung*. Für die Anzeige wird
-auf die Dateigröße geklemmt; `sentBytes` bleibt roh sichtbar und ist damit der ehrlichere
-Wert für Diagnosezwecke. Der Test `duplicateReadsAreClamped` fixiert genau dieses Verhalten:
-`record(80)` zweimal bei `totalBytes: 100` ergibt `sentBytes == 160`, `clampedSent == 100`.
+Cumulative counting has a downside, and that downside is the reason for `clampedSent`: if Sphaira
+requests a range twice — which the protocol permits — the tracker counts it twice. `sentBytes`
+therefore measures *bus traffic*, not *file coverage*. For display it is clamped to the file size;
+`sentBytes` stays visible in its raw form and is thus the more honest value for diagnostics. The
+test `duplicateReadsAreClamped` nails exactly this behaviour down: `record(80)` twice with
+`totalBytes: 100` yields `sentBytes == 160`, `clampedSent == 100`.
 
-Drei weitere Grenzfälle sind bewusst abgesichert:
+Three further edge cases are deliberately covered:
 
-| Fall | Verhalten |
+| Case | Behaviour |
 |---|---|
-| `chunkSize <= 0` | wird ignoriert (leere Antwort am Dateiende, siehe [[protocol/install-session-flow]]) |
-| `totalBytes == 0` | `fraction == 0` statt Division durch null |
-| `totalBytes < 0` | im `init` auf 0 gezogen (`max(0, totalBytes)`) |
+| `chunkSize <= 0` | ignored (empty answer at end of file, see [[protocol/install-session-flow]]) |
+| `totalBytes == 0` | `fraction == 0` instead of a division by zero |
+| `totalBytes < 0` | raised to 0 in `init` (`max(0, totalBytes)`) |
 
-## Drosselung — 100 ms Mindestabstand
+## Throttling — a 100 ms minimum interval
 
-Ein 64-KB-Block bei 20 MB/s heißt gut 300 Anfragen pro Sekunde. Jede davon in ein
-`@Observable`-Feld zu schreiben, hieße 300 SwiftUI-Aktualisierungen pro Sekunde — der
-Hauptthread würde mit dem Zeichnen von Fortschrittsbalken beschäftigt sein, während die
-Übertragung darauf wartet. `tick(now:force:)` ist die Bremse:
+A 64 KB block at 20 MB/s means a good 300 requests per second. Writing every one of them into an
+`@Observable` property would mean 300 SwiftUI updates per second — the main thread would be busy
+drawing progress bars while the transfer waits on it. `tick(now:force:)` is the brake:
 
 ```swift
 mutating func tick(now: UInt64, force: Bool = false) -> Bool {
@@ -118,47 +116,43 @@ mutating func tick(now: UInt64, force: Bool = false) -> Bool {
 }
 ```
 
-`emitIntervalNanos = 100_000_000` deckelt die Oberflächenaktualisierungen auf zehn pro
-Sekunde. Der Rückgabewert ist die einzige Steuerung: Nur wenn `tick` `true` liefert, baut
-`InstallSession` überhaupt ein `TransferProgress` und schickt es durch den Ereigniskanal.
+`emitIntervalNanos = 100_000_000` caps UI updates at ten per second. The return value is the only
+control: only if `tick` returns `true` does `InstallSession` build a `TransferProgress` at all and
+push it through the event channel.
 
-Beachtenswert ist `now &- lastEmitNanos` — Subtraktion mit Überlaufumbruch statt `-`.
-`DispatchTime.now().uptimeNanoseconds` ist monoton, aber die `&-`-Variante macht die
-Rechnung auch dann absturzsicher, wenn ein Aufrufer einen kleineren Zeitstempel hereinreicht,
-als beim letzten Mal gesetzt wurde.
+Worth noting is `now &- lastEmitNanos` — wrapping subtraction instead of `-`.
+`DispatchTime.now().uptimeNanoseconds` is monotonic, but the `&-` variant keeps the arithmetic
+crash-proof even if a caller passes in a timestamp smaller than the one recorded last time.
 
-## Durchsatzglättung
+## Throughput smoothing
 
-Der Rohwert eines 100-ms-Fensters springt stark, weil Sphaira zwischen Blöcken selbst
-schreibt und Prüfsummen rechnet. Ein exponentiell geglätteter Mittelwert mit
-`rateSmoothing = 0.2` (20 % neuer Messwert, 80 % Historie) macht die Anzeige lesbar, ohne
-träge zu werden.
+The raw value of a 100 ms window jumps around a lot, because Sphaira itself writes and computes
+checksums between blocks. An exponentially smoothed average with `rateSmoothing = 0.2` (20 % new
+sample, 80 % history) makes the display readable without making it sluggish.
 
-Die Sonderbehandlung `bytesPerSecond == 0 ? sample : …` ist wichtig: Ohne sie startete jede
-Datei bei 0 B/s und bräuchte etliche Fenster, um den echten Wert zu erreichen. So gilt der
-erste Messwert voll, alle weiteren werden geglättet. Zwei Tests sichern beide Richtungen ab —
-`rateReflectsThroughput` (1 MB in 100 ms ⇒ exakt 10 MB/s beim ersten Fenster) und
-`rateIsSmoothed` (verdoppelter Durchsatz im zweiten Fenster darf nicht sofort auf den neuen
-Wert springen).
+The special case `bytesPerSecond == 0 ? sample : …` matters: without it, every file would start at
+0 B/s and need a good many windows to reach the real value. This way the first sample counts fully
+and all later ones are smoothed. Two tests cover both directions — `rateReflectsThroughput` (1 MB
+in 100 ms ⇒ exactly 10 MB/s for the first window) and `rateIsSmoothed` (a doubled throughput in the
+second window must not jump straight to the new value).
 
-Steht die Übertragung still, sinkt der Wert automatisch, weil `sample` dann 0 ist
-(`rateDecaysWhenStalled`). Genau das braucht die Restzeit-Anzeige, damit sie bei einer
-hängenden Verbindung nicht bei einem alten, optimistischen Wert einfriert.
+If the transfer stalls, the value decays automatically because `sample` is then 0
+(`rateDecaysWhenStalled`). That is exactly what the remaining-time display needs so that it does
+not freeze at an old, optimistic value when the connection hangs.
 
-## Warum der Zeitstempel hereingereicht wird
+## Why the timestamp is passed in
 
 ```swift
-/// Bewusst ohne Zeit- und USB-Abhängigkeit: Der Zeitstempel wird hereingereicht,
-/// damit sich das Verhalten deterministisch prüfen lässt.
+/// Deliberately without a time or USB dependency: the timestamp is passed in
+/// so that the behaviour can be verified deterministically.
 init(totalBytes: Int64, startNanos: UInt64)
 mutating func tick(now: UInt64, force: Bool = false) -> Bool
 ```
 
-Würde der Tracker selbst `DispatchTime.now()` aufrufen, ließen sich Drosselung und
-Durchsatzberechnung nur mit `sleep` im Test prüfen — langsam, und auf ausgelasteten
-CI-Maschinen unzuverlässig. So schreibt der Test schlicht `tick(now: 100 * ms)` und erwartet
-exakte Zahlen ([[operations/testing-strategy]]). Die einzige Stelle, an der echte Zeit ins Spiel kommt, liegt in
-`InstallSession`:
+If the tracker called `DispatchTime.now()` itself, throttling and throughput calculation could only
+be tested with `sleep` — slow, and unreliable on loaded CI machines. As it is, the test simply
+writes `tick(now: 100 * ms)` and expects exact numbers ([[operations/testing-strategy]]). The only
+place where real time enters the picture is in `InstallSession`:
 
 ```swift
 var tracker = ProgressTracker(
@@ -167,13 +161,13 @@ var tracker = ProgressTracker(
 )
 ```
 
-`DispatchTime` und nicht `Date`: Eine Zeitumstellung oder eine NTP-Korrektur darf den
-Durchsatz nicht ins Absurde ziehen.
+`DispatchTime` and not `Date`: a clock change or an NTP correction must not drag the throughput into
+absurdity.
 
-## Einbettung in die Sitzung
+## Embedding in the session
 
-Der Tracker ist **pro Datei** — er wird in `transferFile` erzeugt und lebt nur für diese
-eine Übertragung. Der Gesamtfortschritt entsteht erst beim Bau des Ereignisses:
+The tracker is **per file** — it is created in `transferFile` and lives only for that one transfer.
+The overall progress only comes into being when the event is built:
 
 ```swift
 func emitProgress(force: Bool) {
@@ -191,21 +185,21 @@ func emitProgress(force: Bool) {
 }
 ```
 
-`completedBytes` sind die Bytes bereits **abgeschlossener** Dateien (nur erfolgreiche zählen,
-siehe [[protocol/install-session-flow]]), `overallTotal` die Summe aller `byteCount` aus dem
-Scan ([[architecture/queue-and-file-scanning]]). Am Dateiende steht ein
-`emitProgress(force: true)`, das die Drosselung übergeht — sonst könnte die letzte Meldung
-einer Datei verschluckt werden und der Balken kurz vor 100 % stehen bleiben.
+`completedBytes` are the bytes of files already **completed** (only successful ones count, see
+[[protocol/install-session-flow]]), `overallTotal` is the sum of all `byteCount` values from the
+scan ([[architecture/queue-and-file-scanning]]). At the end of a file there is an
+`emitProgress(force: true)` that bypasses the throttling — otherwise a file's last message could be
+swallowed and the bar would stop just short of 100 %.
 
-Daraus rechnet `ProgressPanelView` ([[ui/window-and-views]]) weiter: zwei Balken (Gesamt und aktuelle Datei), beide auf
-1 geklemmt und bei `isFinished` fest auf 1 gesetzt, sowie die Restzeit als
-`(overallTotal − overallSent) / bytesPerSecond`. Ist der Durchsatz 0 oder die Übertragung
-fertig, wird bewusst `.nan` in `ByteFormat.duration` gereicht und daraus ein Gedankenstrich —
-siehe [[architecture/queue-and-file-scanning]].
+`ProgressPanelView` ([[ui/window-and-views]]) takes it from there: two bars (overall and current
+file), both clamped to 1 and pinned to 1 when `isFinished`, plus the remaining time as
+`(overallTotal − overallSent) / bytesPerSecond`. If the throughput is 0 or the transfer is done,
+`.nan` is deliberately handed to `ByteFormat.duration` and turns into an en dash — see
+[[architecture/queue-and-file-scanning]].
 
-## Ein bekannter Rest
+## One known loose end
 
-`itemTotal` kommt aus `seekToEnd()` der geöffneten Datei, `overallTotal` dagegen aus den
-beim Scan gemerkten `byteCount`. Ändert sich eine Datei zwischen Ablegen und Übertragung,
-passt der Dateibalken weiterhin, der Gesamtbalken jedoch nicht exakt. Der Fall ist selten
-und die Anzeige durch das Klemmen auf ≤ 100 % harmlos — bewusst nicht wegabstrahiert.
+`itemTotal` comes from `seekToEnd()` on the opened file, whereas `overallTotal` comes from the
+`byteCount` values recorded during the scan. If a file changes between being dropped and being
+transferred, the per-file bar still fits but the overall bar is no longer exact. The case is rare
+and, thanks to the clamping to ≤ 100 %, harmless in the display — deliberately not abstracted away.

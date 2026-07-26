@@ -2,8 +2,8 @@
 //  SphairaConnect-Bridging-Header.h
 //  Sphaira Connect
 //
-//  Macht libusb für Swift sichtbar. Die Bibliothek wird statisch gelinkt
-//  (siehe OTHER_LDFLAGS), die App bleibt damit eigenständig lauffähig.
+//  Exposes libusb to Swift. The library is linked statically
+//  (see OTHER_LDFLAGS), which keeps the app self-contained.
 //
 
 #import <libusb.h>

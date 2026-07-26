@@ -3,12 +3,12 @@ import Testing
 
 @Suite("ByteFormat")
 struct ByteFormatTests {
-    /// Das Dezimaltrennzeichen folgt der eingestellten Sprache. Die Erwartungen
-    /// dürfen es deshalb nicht fest verdrahten, sonst scheitern die Tests je
-    /// nach Systemsprache.
+    /// The decimal separator follows the selected language. The expectations must
+    /// therefore not hard-code it, otherwise the tests fail depending on the
+    /// system language.
     private let sep = ByteFormat.decimalSeparator
 
-    @Test("size: Grenzwerte und Skalierung (dezimal, sprachabhängiges Trennzeichen)")
+    @Test("size: edge cases and scaling (decimal, language-dependent separator)")
     func sizeValues() {
         #expect(ByteFormat.size(0) == "0 B")
         #expect(ByteFormat.size(1) == "1 B")
@@ -21,20 +21,20 @@ struct ByteFormatTests {
         #expect(ByteFormat.size(2_000_000_000_000) == "2\(sep)0 TB")
     }
 
-    @Test("size: sehr groß ohne Absturz, PB als größte Einheit")
+    @Test("size: very large values without crashing, PB as the largest unit")
     func sizeHuge() {
         let text = ByteFormat.size(Int64.max)
         #expect(text.hasSuffix(" PB"))
         #expect(ByteFormat.size(9_000_000_000_000_000) == "9\(sep)0 PB")
     }
 
-    @Test("size: negativ ergibt den Gedankenstrich")
+    @Test("size: negative values yield the en dash")
     func sizeNegative() {
         #expect(ByteFormat.size(-1) == "–")
         #expect(ByteFormat.size(Int64.min) == "–")
     }
 
-    @Test("rate: Normalfälle")
+    @Test("rate: normal cases")
     func rateValues() {
         #expect(ByteFormat.rate(0) == "0 B/s")
         #expect(ByteFormat.rate(999) == "999 B/s")
@@ -42,7 +42,7 @@ struct ByteFormatTests {
         #expect(ByteFormat.rate(1_000_000) == "1\(sep)0 MB/s")
     }
 
-    @Test("rate: nicht endlich oder negativ ergibt den Gedankenstrich")
+    @Test("rate: non-finite or negative values yield the en dash")
     func rateInvalid() {
         #expect(ByteFormat.rate(.nan) == "–")
         #expect(ByteFormat.rate(.infinity) == "–")
@@ -50,7 +50,7 @@ struct ByteFormatTests {
         #expect(ByteFormat.rate(-0.5) == "–")
     }
 
-    @Test("duration: Formate m:ss und h:mm:ss")
+    @Test("duration: m:ss and h:mm:ss formats")
     func durationValues() {
         #expect(ByteFormat.duration(0) == "0:00")
         #expect(ByteFormat.duration(5) == "0:05")
@@ -63,13 +63,13 @@ struct ByteFormatTests {
         #expect(ByteFormat.duration(86_400) == "24:00:00")
     }
 
-    @Test("duration: Rundung auf ganze Sekunden")
+    @Test("duration: rounds to whole seconds")
     func durationRounding() {
         #expect(ByteFormat.duration(59.6) == "1:00")
         #expect(ByteFormat.duration(0.4) == "0:00")
     }
 
-    @Test("duration: nicht endlich oder negativ ergibt den Gedankenstrich")
+    @Test("duration: non-finite or negative values yield the en dash")
     func durationInvalid() {
         #expect(ByteFormat.duration(.nan) == "–")
         #expect(ByteFormat.duration(.infinity) == "–")

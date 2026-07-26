@@ -2,8 +2,8 @@
 //  InstallSession.swift
 //  Sphaira Connect
 //
-//  Protokoll-Zustandsautomat des Sphaira-USB-Installers. Läuft komplett
-//  blockierend auf einem Hintergrund-Thread, daher durchgehend nonisolated.
+//  Protocol state machine of the Sphaira USB installer. Runs entirely
+//  blocking on a background thread, hence nonisolated throughout.
 //
 
 import Foundation
@@ -36,8 +36,8 @@ final class InstallSession: @unchecked Sendable {
     ) throws {
         defer { transport.close() }
 
-        // Warte- und Verbindungsmeldung schreibt das Ansichtsmodell,
-        // hier würden sie nur doppelt im Protokoll landen.
+        // The view model already logs the waiting and connected messages;
+        // emitting them here would only duplicate them in the log.
         let device = try transport.open(cancel: cancel)
         onDevice(device)
 
@@ -46,8 +46,8 @@ final class InstallSession: @unchecked Sendable {
             tableBytes.append(contentsOf: Array((item.displayName + "\n").utf8))
         }
 
-        // Das erste Paket der Switch trägt keinen Inhalt — decode prüft
-        // Magic und CRC, mehr zählt hier nicht.
+        // The first packet from the Switch carries no payload — decode validates
+        // magic and CRC, and nothing else matters here.
         _ = try transport.readPacket(cancel: cancel)
         try transport.send(.ok, arg3: UInt32(tableBytes.count), arg4: 0, cancel: cancel)
         try transport.write(tableBytes, cancel: cancel)
@@ -83,8 +83,8 @@ final class InstallSession: @unchecked Sendable {
                     onItemState: onItemState,
                     cancel: cancel
                 )
-                // Nur tatsächlich übertragene Bytes zählen, sonst springt der
-                // Gesamtfortschritt über eine gescheiterte Datei hinweg.
+                // Only count bytes that were actually transferred, otherwise the
+                // overall progress jumps across a file that failed.
                 if transferred {
                     completedBytes += items[index].byteCount
                 }
@@ -96,14 +96,14 @@ final class InstallSession: @unchecked Sendable {
         }
     }
 
-    // MARK: - Einzelne Datei
+    // MARK: - Single file
 
-    /// Liefert `true`, wenn die Datei vollständig übertragen wurde.
+    /// Returns `true` if the file was transferred completely.
     ///
-    /// Bei einem Dateifehler geht ein Fehlerpaket an die Switch. Sphaira bricht
-    /// daraufhin die gesamte Installation ab, schickt aber noch den Abschluss-
-    /// beziehungsweise Quit-Befehl — den beantwortet die Kommandoschleife regulär.
-    /// So endet die Sitzung geordnet statt mit einem abrupten USB-Abriss.
+    /// On a file error an error packet goes to the Switch. Sphaira then aborts
+    /// the whole installation, but still sends the finish or quit command — the
+    /// command loop answers that one normally. The session therefore ends in an
+    /// orderly fashion instead of with an abrupt USB disconnect.
     private nonisolated func transferFile(
         index: Int,
         completedBytes: Int64,
@@ -168,7 +168,7 @@ final class InstallSession: @unchecked Sendable {
             let chunk: [UInt8]
             do {
                 try file.seek(toOffset: offset)
-                // nil bedeutet Dateiende — als leere Antwort behandeln.
+                // nil means end of file — treat it as an empty response.
                 chunk = [UInt8](try file.read(upToCount: requested) ?? Data())
             } catch {
                 try reportFailure(error.localizedDescription)
@@ -189,10 +189,10 @@ final class InstallSession: @unchecked Sendable {
 
         emitProgress(force: true)
 
-        // Sphaira schließt die Datei nach wenigen Kilobyte auch dann, wenn es sie
-        // überspringt (bereits installiert) oder verwirft (ungültiger Kopfsatz).
-        // Beide Fälle sind auf dem Draht nicht unterscheidbar — also melden wir
-        // den Sachverhalt und nicht eine geratene Ursache.
+        // Sphaira also closes the file after a few kilobytes when it skips the
+        // title (already installed) or rejects it (invalid header). The two cases
+        // are indistinguishable on the wire — so we report the observed facts
+        // rather than a guessed cause.
         guard tracker.sentBytes >= Int64(size) else {
             let reason = String(
                 localized: "übersprungen — Switch hat nur \(ByteFormat.size(tracker.sentBytes)) von \(ByteFormat.size(Int64(size))) angefordert"

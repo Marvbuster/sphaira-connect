@@ -1,33 +1,35 @@
-# Sphaira Connect — verbindlicher Schnittstellenvertrag
+# Sphaira Connect — Binding Interface Contract
 
-> Dieses Dokument war die Bauvorgabe und beschreibt die Modulgrenzen. Die
-> laufend gepflegte Beschreibung des Systems steht im `.wiki/`.
+> This document was the original build specification and describes the module
+> boundaries. The continuously maintained description of the system lives in `.wiki/`.
 
-Alle Module werden gegen **exakt** diese Signaturen gebaut. Keine Abweichung, keine
-Umbenennung, keine zusätzlichen Pflichtparameter. Wer etwas vermisst, ergänzt es
-**additiv** (neue Methode), ohne Bestehendes zu ändern.
+Every module is built against **exactly** these signatures. No deviation, no renaming,
+no additional required parameters. Anything you find missing is added **additively**
+(a new method), without changing what already exists.
 
-## Rahmenbedingungen (nicht verhandelbar)
+## Ground rules (non-negotiable)
 
-- Ziel: **macOS 26.5**, Swift 5 Sprachmodus, `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`.
-  → Jeder Typ ist standardmäßig `@MainActor`. Alles, was USB macht oder blockiert,
-  **muss** explizit `nonisolated` sein bzw. `final class ... : @unchecked Sendable`.
-- App-Sandbox ist **aus**, Hardened Runtime an. libusb ist statisch gelinkt,
-  Bridging-Header vorhanden — `libusb_*` ist ohne `import` global sichtbar.
-- Dateien liegen unter `Sphaira Connect/` und werden per
-  `PBXFileSystemSynchronizedRootGroup` automatisch kompiliert. **Projektdatei nicht anfassen.**
-- Kommentare und Oberflächentexte auf **Deutsch**, Bezeichner auf Englisch.
-- Keine Datei über 400 Zeilen.
+- Target: **macOS 26.5**, Swift 5 language mode, `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`.
+  → Every type is `@MainActor` by default. Anything that touches USB or blocks
+  **must** be explicitly `nonisolated`, or `final class ... : @unchecked Sendable`.
+- The App Sandbox is **off**, Hardened Runtime is on. libusb is statically linked and a
+  bridging header is in place — `libusb_*` is globally visible without an `import`.
+- Sources live under `Sphaira Connect/` and are compiled automatically via
+  `PBXFileSystemSynchronizedRootGroup`. **Do not touch the project file.**
+- Comments and identifiers in **English**. User-facing strings stay **German** —
+  they double as the keys in `Localizable.xcstrings`, whose source language is
+  German; English ships as a translation.
+- No file longer than 400 lines.
 
-## Ordnerzuordnung
+## Folder layout
 
-| Ordner | Inhalt |
+| Folder | Contents |
 |---|---|
-| `Sphaira Connect/Core/` | Reine Logik, keine SwiftUI-, keine USB-Abhängigkeit |
-| `Sphaira Connect/USB/` | libusb-Anbindung und Protokoll-Zustandsautomat |
-| `Sphaira Connect/Shared/` | Designsystem |
-| `Sphaira Connect/Features/` | Ansichtsmodell |
-| `Sphaira Connect/Features/Views/` | SwiftUI-Ansichten |
+| `Sphaira Connect/Core/` | Pure logic, no SwiftUI and no USB dependency |
+| `Sphaira Connect/USB/` | libusb binding and protocol state machine |
+| `Sphaira Connect/Shared/` | Design system |
+| `Sphaira Connect/Features/` | View model |
+| `Sphaira Connect/Features/Views/` | SwiftUI views |
 
 ---
 
@@ -39,8 +41,8 @@ enum CRC32C {
     static func checksum<C: Collection>(_ bytes: C) -> UInt32 where C.Element == UInt8
 }
 ```
-Castagnoli, gespiegeltes Polynom `0x82F63B78`, Start `0xFFFFFFFF`, Endnegation.
-Referenzwerte für Tests: `checksum([])` = `0`, `checksum("123456789".utf8)` = `0xE3069283`.
+Castagnoli, reflected polynomial `0x82F63B78`, seed `0xFFFFFFFF`, final inversion.
+Reference values for tests: `checksum([])` = `0`, `checksum("123456789".utf8)` = `0xE3069283`.
 
 ### SphairaProtocol.swift
 ```swift
@@ -71,9 +73,10 @@ struct Packet: Equatable, Sendable {
     var dataSize: UInt32 { get }     // == arg4
 }
 ```
-Drahtformat: sechs `UInt32` little-endian — `magic, arg2, arg3, arg4, arg5, crc32c`.
-Die CRC32C läuft über die **ersten 20 Bytes**. `decode` wirft bei falscher Magic
-(`InstallError.badMagic`), falscher Länge (`.shortPacket`) und CRC-Fehler (`.checksumMismatch`).
+Wire format: six little-endian `UInt32` values — `magic, arg2, arg3, arg4, arg5, crc32c`.
+The CRC32C covers the **first 20 bytes**. `decode` throws on a wrong magic
+(`InstallError.badMagic`), a wrong length (`.shortPacket`) and a checksum error
+(`.checksumMismatch`).
 
 ### InstallError.swift
 ```swift
@@ -88,7 +91,7 @@ enum InstallError: LocalizedError, Equatable {
     case fileUnreadable(path: String, reason: String)
     case cancelled
 
-    var errorDescription: String? { get }   // deutscher Klartext
+    var errorDescription: String? { get }   // plain German text
 }
 ```
 
@@ -99,13 +102,13 @@ struct InstallItem: Identifiable, Equatable, Sendable {
         case queued
         case transferring
         case done
-        case skipped(String)   // Switch hat die Datei nach wenigen Bytes geschlossen
+        case skipped(String)   // the Switch closed the file after only a few bytes
         case failed(String)
     }
 
     let id: UUID
     let url: URL
-    let displayName: String     // Dateiname inkl. Endung — geht so an die Switch
+    let displayName: String     // file name including extension — sent to the Switch as is
     let byteCount: Int64
     var state: State
 
@@ -115,8 +118,8 @@ struct InstallItem: Identifiable, Equatable, Sendable {
 enum ItemScanner {
     static let installableExtensions: Set<String>   // ["nsp", "xci", "nsz", "xcz"]
 
-    /// Ordner werden rekursiv aufgelöst, Duplikate (gleicher Pfad) entfallen,
-    /// nicht installierbare Endungen werden ignoriert. Reihenfolge: stabil alphabetisch.
+    /// Folders are resolved recursively, duplicates (same path) are dropped and
+    /// non-installable extensions are ignored. Order: stable alphabetical.
     static func scan(_ urls: [URL]) -> [InstallItem]
 }
 ```
@@ -126,16 +129,44 @@ enum ItemScanner {
 enum ByteFormat {
     static func size(_ bytes: Int64) -> String            // "1,4 GB"
     static func rate(_ bytesPerSecond: Double) -> String  // "23,1 MB/s"
-    static func duration(_ seconds: Double) -> String     // "2:05" bzw. "–"
+    static func duration(_ seconds: Double) -> String     // "2:05" or "–"
 }
 ```
-Nicht-endliche oder negative Eingaben ergeben `"–"`, nie einen Absturz.
+Non-finite or negative input yields `"–"`, never a crash.
+The decimal separator follows the selected language, so expectations in tests must
+not hard-code it.
+
+### ProgressTracker.swift
+```swift
+struct ProgressTracker {
+    static let emitIntervalNanos: UInt64   // 100_000_000
+    static let rateSmoothing: Double       // 0.2
+
+    let totalBytes: Int64
+    private(set) var sentBytes: Int64
+    private(set) var bytesPerSecond: Double
+
+    init(totalBytes: Int64, startNanos: UInt64)
+
+    mutating func record(chunkSize: Int)
+    mutating func tick(now: UInt64, force: Bool = false) -> Bool
+
+    var clampedSent: Int64 { get }
+    var fraction: Double { get }
+}
+```
+Added after the fact: the first implementation counted the highest **requested**
+offset, which pegged the bar at 100 % within seconds on an XCI. Progress is the
+**sum of transferred chunks**, clamped to the file size, because the Switch may
+request the same range more than once. The timestamp is passed in rather than read
+from a clock, which is what makes the throughput smoothing deterministically
+testable.
 
 ---
 
 ## 2. USB — `Sphaira Connect/USB/`
 
-`LibUSBProbe.swift` existiert bereits und bleibt unverändert.
+`LibUSBProbe.swift` already exists and stays unchanged.
 
 ### USBTransport.swift
 ```swift
@@ -150,7 +181,7 @@ final class USBTransport: @unchecked Sendable {
 
     nonisolated static func isSwitchAttached() -> Bool
 
-    /// Blockiert, bis die Switch da ist. `cancel` wird regelmäßig abgefragt.
+    /// Blocks until the Switch shows up. `cancel` is polled regularly.
     nonisolated func open(cancel: () -> Bool) throws -> DeviceInfo
     nonisolated func close()
 
@@ -160,10 +191,10 @@ final class USBTransport: @unchecked Sendable {
     nonisolated func write(_ bytes: [UInt8], cancel: () -> Bool) throws
 }
 ```
-Lesen läuft mit 500 ms Timeout in einer Schleife, damit `cancel` greift;
-`LIBUSB_ERROR_TIMEOUT` ist kein Fehler. `LIBUSB_ERROR_ACCESS` (-3) wirft
-`.accessDenied`. Endpunkte werden aus der aktiven Konfiguration ermittelt,
-Rückfall auf `0x81` (IN) und `0x01` (OUT).
+Reads run in a loop with a 500 ms timeout so that `cancel` takes effect;
+`LIBUSB_ERROR_TIMEOUT` is not an error. `LIBUSB_ERROR_ACCESS` (-3) throws
+`.accessDenied`. Endpoints are taken from the active configuration, falling back to
+`0x81` (IN) and `0x01` (OUT).
 
 ### InstallSession.swift
 ```swift
@@ -190,44 +221,43 @@ final class InstallSession: @unchecked Sendable {
 }
 ```
 
-**Ablauf — exakt so, sonst hängt die Switch:**
+**Sequence — exactly like this, otherwise the Switch hangs:**
 1. `transport.open` → `onDevice`
-2. Namensliste bauen: für jeden Eintrag `displayName` + `"\n"`, UTF-8
-3. **Ein** Paket lesen (`readPacket`) — Inhalt wird verworfen, nur die Magic zählt
-4. `send(.ok, arg3: UInt32(tableBytes.count), arg4: 0)`, danach `write(tableBytes)`
-5. Schleife: `readPacket`
-   - `command == 0` (quit) → `send(.ok, 0, 0)`, Schleife verlassen, fertig
-   - `command == 1` (open) → Datei mit Index `packet.arg3` übertragen
-   - sonst → `send(.error, 0, 0)` und `InstallError.unexpectedCommand` werfen
-6. Datei übertragen:
-   - Datei öffnen, Größe bestimmen, `sendFileInfo(size:flags: TransferFlags.none)`
-   - Schleife: `readPacket` → `dataOffset`/`dataSize`
-     - beide `0` → `send(.ok, 0, 0)`, Datei fertig
-     - sonst: an Offset springen, `dataSize` Bytes lesen,
-       `send(.ok, arg3: UInt32(gelesen), arg4: CRC32C.checksum(gelesen))`,
-       danach `write(daten)`
-   - Fortschritt: Summe der tatsächlich gesendeten Bytes, geklemmt auf die
-     Dateigröße — NICHT die höchste angefragte Position (siehe ProgressTracker),
-     `onProgress` höchstens alle 100 ms
+2. Build the file list: for every entry `displayName` + `"\n"`, UTF-8
+3. Read **one** packet (`readPacket`) — its contents are discarded, only the magic matters
+4. `send(.ok, arg3: UInt32(tableBytes.count), arg4: 0)`, then `write(tableBytes)`
+5. Loop: `readPacket`
+   - `command == 0` (quit) → `send(.ok, 0, 0)`, leave the loop, done
+   - `command == 1` (open) → transfer the file at index `packet.arg3`
+   - otherwise → `send(.error, 0, 0)` and throw `InstallError.unexpectedCommand`
+6. Transferring a file:
+   - open the file, determine its size, `sendFileInfo(size:flags: TransferFlags.none)`
+   - loop: `readPacket` → `dataOffset`/`dataSize`
+     - both `0` → `send(.ok, 0, 0)`, file complete
+     - otherwise: seek to the offset, read `dataSize` bytes,
+       `send(.ok, arg3: UInt32(bytesRead), arg4: CRC32C.checksum(bytesRead))`,
+       then `write(data)`
+   - Progress: the sum of the bytes actually sent, clamped to the file size — NOT the
+     highest requested position (see ProgressTracker); `onProgress` at most every 100 ms
 
-`onItemState` meldet `.transferring` beim Start und `.done` am Ende einer Datei.
-Abbruch wirft `InstallError.cancelled`. `close()` gehört in ein `defer`.
+`onItemState` reports `.transferring` when a file starts and `.done` when it finishes.
+Cancellation throws `InstallError.cancelled`. `close()` belongs in a `defer`.
 
 ---
 
-## 3. Designsystem — `Sphaira Connect/Shared/`
+## 3. Design system — `Sphaira Connect/Shared/`
 
-Stilvorlage ist NovaTimePuncher unter `<workspace>/NovaTimePuncher/NovaTimePuncher/Shared/`.
-Übernommen wird die Machart, **nicht** die Fachlichkeit.
+The stylistic template is NovaTimePuncher under `<workspace>/NovaTimePuncher/NovaTimePuncher/Shared/`.
+What is adopted is the approach, **not** the subject matter.
 
 ### DesignTokens.swift
 ```swift
 enum Spacing { static let xs, sm, md, lg, xl, xxl: CGFloat }   // 4, 8, 12, 16, 24, 32
 enum Fonts { static let title, subtitle, mono, helper, badge: Font }
 enum Colors {
-    static let backgroundTint: Color        // ruhiges Blau, Grundzustand
-    static let backgroundTintActive: Color  // grünlich, während der Übertragung
-    static let backgroundTintError: Color   // rötlich, bei Fehlern
+    static let backgroundTint: Color        // calm blue, idle state
+    static let backgroundTintActive: Color  // greenish, during a transfer
+    static let backgroundTintError: Color   // reddish, on errors
     static let accent, success, warning, danger: Color
 }
 extension Color { init(hex: UInt32, alpha: Double = 1.0) }
@@ -239,8 +269,8 @@ struct GlassBackground: View { var cornerRadius: CGFloat; var tint: Color }
 struct VisualEffectBlur: NSViewRepresentable    // .behindWindow, .underWindowBackground, .active
 extension View { func connectCard(radius: CGFloat = 14, tint: Color = Colors.backgroundTint) -> some View }
 ```
-**Wichtig:** Glas darf nicht in Glas geschachtelt werden. `connectCard` ist die
-Gruppierung ohne Glaseffekt für Bereiche, die selbst Glaselemente enthalten.
+**Important:** glass must not be nested inside glass. `connectCard` provides the
+grouping without the glass effect, for areas that contain glass elements themselves.
 
 ### GlassInteractive.swift
 ```swift
@@ -262,18 +292,18 @@ struct GlassButton: View {
          action: @escaping () -> Void)
 }
 ```
-Umsetzung über `.glassEffect(Glass.regular.tint(...).interactive(), in: .rect(cornerRadius:))`.
+Implemented via `.glassEffect(Glass.regular.tint(...).interactive(), in: .rect(cornerRadius:))`.
 
 ### WindowStyleConfigurator.swift
 ```swift
 struct WindowStyleConfigurator: NSViewRepresentable { var sizeKey: AnyHashable }
 ```
-Transparente Titelleiste, `fullSizeContentView`, per Hintergrund verschiebbar,
-Fenster passt sich animiert dem Inhalt an. Ampelknöpfe bleiben sichtbar.
+Transparent title bar, `fullSizeContentView`, draggable by its background, the window
+resizes to its content with an animation. The traffic-light buttons stay visible.
 
 ---
 
-## 4. Ansichtsmodell — `Sphaira Connect/Features/InstallerModel.swift`
+## 4. View model — `Sphaira Connect/Features/InstallerModel.swift`
 
 ```swift
 @Observable
@@ -301,7 +331,7 @@ final class InstallerModel {
     var isLogExpanded: Bool
 
     var totalBytes: Int64 { get }
-    var canStart: Bool { get }        // Einträge vorhanden und nicht am Übertragen
+    var canStart: Bool { get }        // items present and no transfer running
     var isBusy: Bool { get }
 
     func add(urls: [URL])
@@ -309,45 +339,50 @@ final class InstallerModel {
     func clearAll()
     func start()
     func cancel()
-    func startMonitoring()            // pollt alle 2 s `USBTransport.isSwitchAttached()`
+    func startMonitoring()            // polls `USBTransport.isSwitchAttached()` every 2 s
     func stopMonitoring()
 }
 ```
-`start()` startet die Sitzung über `Task.detached`, damit der Hauptthread frei
-bleibt; alle Rückmeldungen laufen über `Task { @MainActor in ... }` zurück.
-`cancel()` setzt ein Abbruch-Flag, das die Sitzung abfragt.
-Das Protokoll darf **nicht** auf dem MainActor laufen.
+`start()` launches the session via `Task.detached` so the main thread stays free; all
+feedback is routed back through `Task { @MainActor in ... }`.
+`cancel()` sets a cancellation flag that the session polls.
+The protocol must **not** run on the MainActor.
 
 ---
 
-## 5. Ansichten — `Sphaira Connect/Features/Views/`
+## 5. Views — `Sphaira Connect/Features/Views/`
 
-- `RootView.swift` — `ZStack`: `VisualEffectBlur`, Zustandsfarbe, Inhalt,
-  `WindowStyleConfigurator`. Kopfzeile mit Titel und Statusanzeige,
-  darunter Ablagefläche beziehungsweise Warteschlange, unten Fortschritt und Aktionen.
-- `StatusPill.swift` — Verbindungsanzeige, Punkt plus Text, animierter Farbwechsel.
-- `DropZoneView.swift` — `.onDrop` für Dateien und Ordner, Klick öffnet `NSOpenPanel`
-  (mehrfach, Ordner erlaubt). Deutliche optische Rückmeldung beim Überfahren.
-- `QueueListView.swift` — Liste der Einträge mit Name, Größe, Zustandssymbol,
-  Entfernen-Knopf. Der gerade laufende Eintrag ist hervorgehoben.
-- `ProgressPanelView.swift` — Gesamtfortschritt und aktuelle Datei, Geschwindigkeit,
-  Restzeit, übertragene von Gesamtgröße.
-- `LogConsoleView.swift` — aufklappbar, monospaced, automatisch nach unten gescrollt.
+- `RootView.swift` — `ZStack`: `VisualEffectBlur`, state colour, content,
+  `WindowStyleConfigurator`. Header with title and status indicator, below it the drop
+  area or the queue, at the bottom progress and actions.
+- `StatusPill.swift` — connection indicator, dot plus text, animated colour change.
+- `DropZoneView.swift` — `.onDrop` for files and folders, a click opens `NSOpenPanel`
+  (multiple selection, folders allowed). Clear visual feedback on hover.
+- `QueueListView.swift` — list of entries with name, size, state icon and a remove
+  button. The entry currently running is highlighted.
+- `ProgressPanelView.swift` — overall and current-file progress, throughput, remaining
+  time, bytes transferred out of the total size.
+- `LogConsoleView.swift` — collapsible, monospaced, auto-scrolled to the bottom.
 
-`ContentView.swift` wird zu einer dünnen Hülle, die `RootView` zeigt.
-`Sphaira_ConnectApp.swift` bleibt schlank (`WindowGroup`, `.hiddenTitleBar`, `.contentSize`).
+`ContentView.swift` becomes a thin shell that shows `RootView`.
+`Sphaira_ConnectApp.swift` stays lean (`WindowGroup`, `.hiddenTitleBar`, `.contentSize`).
 
 ---
 
-## 6. Tests — `SphairaCoreTests/` (eigenes SwiftPM-Paket neben dem Xcode-Projekt)
+## 6. Tests — `SphairaCoreTests/` (a separate SwiftPM package next to the Xcode project)
 
-Getestet wird die reine Logik aus `Core/`, eingebunden per Symlink. Swift Testing
-(`import Testing`, `@Test`, `#expect`). Pflichtfälle:
+What is tested is the pure logic from `Core/`, pulled in via a symlink. Swift Testing
+(`import Testing`, `@Test`, `#expect`). Mandatory cases:
 
-- CRC32C gegen die Referenzwerte, leere Eingabe, inkrementelle Gleichheit
-- `Packet` Hin- und Rückumwandlung, Feldanordnung little-endian,
-  `dataOffset` über die 4-GB-Grenze, verfälschtes Byte ⇒ `checksumMismatch`,
-  falsche Magic ⇒ `badMagic`, zu kurz ⇒ `shortPacket`
-- `ItemScanner`: Ordnerrekursion, Endungsfilter, Duplikate, stabile Reihenfolge,
-  Groß- und Kleinschreibung der Endung
-- `ByteFormat`: Grenzwerte, negativ, `.infinity`, `.nan`
+- CRC32C against the reference values, empty input, incremental equality
+- `Packet` round-trip, little-endian field layout, `dataOffset` beyond the 4 GB
+  boundary, a corrupted byte ⇒ `checksumMismatch`, a wrong magic ⇒ `badMagic`,
+  too short ⇒ `shortPacket`
+- `ItemScanner`: folder recursion, extension filter, duplicates, stable ordering,
+  extension case-insensitivity
+- `ByteFormat`: boundary values, negative, `.infinity`, `.nan`
+- `ProgressTracker`: a chunk requested near the end of the file must **not** inflate
+  progress (the regression that shipped once), chunks summed regardless of order,
+  duplicate ranges clamped to the file size, zero and negative sizes safe, the
+  100 ms throttle, and smoothed throughput — all driven by injected timestamps
+  rather than a real clock

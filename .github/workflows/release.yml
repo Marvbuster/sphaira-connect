@@ -1,13 +1,13 @@
 name: Release
 
-# Läuft, wenn ein Versions-Tag geschoben wird, etwa: git tag v1.0.0 && git push --tags
+# Runs when a version tag is pushed, e.g.: git tag v1.0.0 && git push --tags
 on:
   push:
     tags: ['v*']
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Versions-Tag, z. B. v1.0.0'
+        description: 'Version tag, e.g. v1.0.0'
         required: true
 
 permissions:
@@ -20,21 +20,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Version bestimmen
+      - name: Determine version
         id: version
         run: |
           TAG="${{ github.event.inputs.tag || github.ref_name }}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "number=${TAG#v}" >> "$GITHUB_OUTPUT"
 
-      - name: Abhängigkeiten installieren
+      - name: Install dependencies
         run: brew install libusb create-dmg
 
-      - name: Kernlogik testen
-        # Ein Release ohne grüne Tests gibt es nicht.
+      - name: Test core logic
+        # No release without green tests.
         run: swift test --package-path SphairaCoreTests
 
-      - name: Release bauen
+      - name: Build Release
         run: |
           xcodebuild build \
             -scheme "Sphaira Connect" \
@@ -42,19 +42,19 @@ jobs:
             -destination 'platform=macOS,arch=arm64' \
             -derivedDataPath build
 
-      - name: App verpacken
+      - name: Package app
         id: package
         run: |
           APP="build/Build/Products/Release/Sphaira Connect.app"
-          test -d "$APP" || { echo "App-Bundle nicht gefunden"; exit 1; }
+          test -d "$APP" || { echo "App bundle not found"; exit 1; }
 
-          # Die Signatur muss die Verpackung überleben — ditto ist der von Apple
-          # vorgesehene Weg, zip zerstört Symlinks und erweiterte Attribute.
+          # The signature has to survive packaging — ditto is Apple's supported
+          # way; plain zip destroys symlinks and extended attributes.
           ZIP="Sphaira-Connect-${{ steps.version.outputs.number }}-arm64.zip"
           ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
 
-          # DMG mit Fensterlayout und Verknüpfung auf den Programme-Ordner.
-          # create-dmg braucht ein Quellverzeichnis, das NUR die App enthält.
+          # DMG with a window layout and a link to /Applications.
+          # create-dmg needs a source directory containing ONLY the app.
           mkdir -p dmg-src && cp -R "$APP" dmg-src/
           DMG="Sphaira-Connect-${{ steps.version.outputs.number }}-arm64.dmg"
           create-dmg \
@@ -71,28 +71,28 @@ jobs:
           echo "sha_zip=$(shasum -a 256 "$ZIP" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
           echo "sha_dmg=$(shasum -a 256 "$DMG" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
-      - name: Verpackte Bundles prüfen
+      - name: Verify packaged bundles
         run: |
-          # ZIP: entpacken und Signatur prüfen
+          # ZIP: extract and verify the signature
           rm -rf verify && mkdir verify
           ditto -x -k "${{ steps.package.outputs.zip }}" verify
           codesign --verify --verbose=2 "verify/Sphaira Connect.app"
 
-          # DMG: einhängen und dieselbe Prüfung, damit nicht nur das ZIP getestet ist
+          # DMG: mount and run the same check, so the ZIP is not the only one tested
           hdiutil attach -nobrowse -quiet "${{ steps.package.outputs.dmg }}"
-          test -L "/Volumes/Sphaira Connect/Applications" || { echo "FEHLER: Verknüpfung zum Programme-Ordner fehlt."; exit 1; }
+          test -L "/Volumes/Sphaira Connect/Applications" || { echo "ERROR: /Applications link missing."; exit 1; }
           codesign --verify --verbose=2 "/Volumes/Sphaira Connect/Sphaira Connect.app"
 
-          # Ad-hoc signiert heißt: keine Team-Kennung. Steht dort eine, ist
-          # versehentlich ein Entwicklerkonto in den Build geraten.
+          # Ad-hoc signed means: no team identifier. If one shows up, a developer
+          # account leaked into the build.
           if codesign -dv "/Volumes/Sphaira Connect/Sphaira Connect.app" 2>&1 | grep -q '^TeamIdentifier=[^n]'; then
             hdiutil detach "/Volumes/Sphaira Connect" -quiet
-            echo "FEHLER: Das Bundle trägt eine Apple-Team-Kennung."
+            echo "ERROR: bundle carries an Apple team identifier."
             exit 1
           fi
           hdiutil detach "/Volumes/Sphaira Connect" -quiet
 
-      - name: Anmerkungen zusammenstellen
+      - name: Assemble release notes
         id: notes
         run: |
           NOTES_DIR="release_notes/v${{ steps.version.outputs.number }}"
@@ -103,18 +103,18 @@ jobs:
             fi
             echo "## Installation"
             echo
-            echo "**DMG** öffnen und die App in den Programme-Ordner ziehen"
-            echo "(oder das ZIP entpacken). Beim ersten Start Rechtsklick →"
-            echo "**Öffnen**: Die App ist ad-hoc signiert und nicht notarisiert,"
-            echo "sonst verweigert Gatekeeper den Start."
+            echo "Open the **DMG** and drag the app into your Applications folder"
+            echo "(or unpack the ZIP). On first launch, right-click → **Open**:"
+            echo "the app is ad-hoc signed and not notarised, so Gatekeeper would"
+            echo "otherwise refuse to start it."
             echo
-            echo "| Datei | SHA-256 |"
+            echo "| File | SHA-256 |"
             echo "|---|---|"
             echo "| \`${{ steps.package.outputs.dmg }}\` | \`${{ steps.package.outputs.sha_dmg }}\` |"
             echo "| \`${{ steps.package.outputs.zip }}\` | \`${{ steps.package.outputs.sha_zip }}\` |"
           } > RELEASE_NOTES.md
 
-      - name: Veröffentlichen
+      - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

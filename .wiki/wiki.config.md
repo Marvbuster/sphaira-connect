@@ -4,7 +4,7 @@ wiki_root: ".wiki"
 article_dir: "articles"
 inbox_dir: "_inbox"
 archive_dir: "_archive"
-default_language: "de"
+default_language: "en"
 auto_index: true
 auto_crosslink: true
 categories:
@@ -27,73 +27,73 @@ tech_stack:
 
 # Wiki Configuration
 
-Sphaira Connect ist eine native macOS-App (SwiftUI, macOS 26.5), die NSP/XCI/NSZ/XCZ-Dateien
-per USB an die Homebrew-App Sphaira auf einer Nintendo Switch überträgt und damit das
-Python-Skript `usb_install.py` ersetzt. Dieses Wiki dokumentiert den Modulschnitt, das
-SPH0-Drahtformat samt Sitzungsablauf, die libusb-Schicht, die Oberfläche und den Betrieb.
+Sphaira Connect is a native macOS app (SwiftUI, macOS 26.5) that transfers NSP/XCI/NSZ/XCZ files
+over USB to the Sphaira homebrew app on a Nintendo Switch, replacing the Python script
+`usb_install.py`. This wiki documents the module boundaries, the SPH0 wire format and its session
+flow, the libusb layer, the user interface and day-to-day operations.
 
 ## Categories
 
 | Category | Scope |
 |----------|-------|
-| `architecture` | Modulschnitt (Core/USB/Shared/Features), Nebenläufigkeit und Abbruch, Warteschlangen- und Datenmodell |
-| `protocol` | SPH0-Drahtformat, CRC32C, Kommandos, Zustandsautomat der Installationssitzung, Fortschrittsberechnung |
-| `usb` | libusb-Anbindung, Geräteerkennung, Endpunkte, Timeouts, Abbau der Verbindung |
-| `ui` | Designsystem (Liquid Glass, Tokens), Fensterverhalten, SwiftUI-Ansichten |
-| `operations` | Xcode-Build-Einstellungen, Teststrategie, Release-Notes-Workflow, Fehlersuche |
+| `architecture` | Module boundaries (Core/USB/Shared/Features), concurrency and cancellation, queue and data model |
+| `protocol` | SPH0 wire format, CRC32C, commands, install-session state machine, progress calculation |
+| `usb` | libusb binding, device discovery, endpoints, timeouts, connection teardown |
+| `ui` | Design system (Liquid Glass, tokens), window behaviour, SwiftUI views |
+| `operations` | Xcode build settings, testing strategy, release-notes workflow, troubleshooting |
 
 ## Code Roots
 
-- App: `Sphaira Connect/` (SwiftUI, macOS 26.5, per `PBXFileSystemSynchronizedRootGroup` eingebunden)
-  - `Core/` — reine Logik, keine SwiftUI-, keine USB-Abhängigkeit
-  - `USB/` — libusb-Anbindung und Protokoll-Zustandsautomat, durchgehend `nonisolated`
-  - `Shared/` — Designsystem
-  - `Features/` und `Features/Views/` — Ansichtsmodell und SwiftUI-Ansichten
-- Vertrag: `CONTRACT.md` (verbindlicher Schnittstellenvertrag, Single Source of Truth für Signaturen)
-- Tests: `SphairaCoreTests/` (eigenständiges SwiftPM-Paket, `Sources/SphairaCore` ist ein Symlink auf `Sphaira Connect/Core`)
-- Projektdatei: `Sphaira Connect.xcodeproj/project.pbxproj` (Single Source of Truth für `MARKETING_VERSION` und `CURRENT_PROJECT_VERSION`)
+- App: `Sphaira Connect/` (SwiftUI, macOS 26.5, wired in via `PBXFileSystemSynchronizedRootGroup`)
+  - `Core/` — pure logic, no SwiftUI and no USB dependency
+  - `USB/` — libusb binding and protocol state machine, `nonisolated` throughout
+  - `Shared/` — design system
+  - `Features/` and `Features/Views/` — view model and SwiftUI views
+- Contract: `CONTRACT.md` (binding interface contract, single source of truth for signatures)
+- Tests: `SphairaCoreTests/` (standalone SwiftPM package, `Sources/SphairaCore` is a symlink to `Sphaira Connect/Core`)
+- Project file: `Sphaira Connect.xcodeproj/project.pbxproj` (single source of truth for `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`)
 
 ## Conventions
 
-- Dateinamen: kebab-case (z. B. `sph0-wire-protocol.md`)
-- Ein abgegrenztes Thema pro Datei (max. 400 Zeilen, Ziel 100–250)
-- Frontmatter obligatorisch (`title`, `created`, `updated`, `category`, `tags`, `status`, `related`, `code_refs`)
-- Mermaid-Diagramme bevorzugt für Abläufe und Zustandsautomaten
-- Code-Pfade relativ zum Projekt-Root (`Sphaira Connect/USB/InstallSession.swift`, nicht absolut)
-- Cross-References bidirektional (wenn A → B, dann B → A in `related`)
-- Sprache: Deutsch für fachliche Inhalte, Englisch nur für rein technische Refs (Bezeichner, Feldnamen, Konstanten)
-- Farbige Boxen in Mermaid immer mit schwarzer Schrift (`color:#000`)
-- Keine Aussage über Code, der nicht gelesen wurde — jede Behauptung muss durch einen `code_ref` gedeckt sein
+- File names: kebab-case (e.g. `sph0-wire-protocol.md`)
+- One self-contained topic per file (max. 400 lines, target 100–250)
+- Frontmatter is mandatory (`title`, `created`, `updated`, `category`, `tags`, `status`, `related`, `code_refs`)
+- Mermaid diagrams preferred for flows and state machines
+- Code paths relative to the project root (`Sphaira Connect/USB/InstallSession.swift`, never absolute)
+- Cross-references are bidirectional (if A → B, then B → A in `related`)
+- Language: English for the wiki prose; identifiers, field names and constants stay as they appear in code
+- Coloured boxes in Mermaid always use black text (`color:#000`)
+- No claim about code that has not been read — every statement must be backed by a `code_ref`
 
 ## Article Lifecycle
 
-| Status | Bedeutung |
-|--------|-----------|
-| `current` | Aktiv und aktuell |
-| `draft` | In Arbeit |
-| `stale` | Braucht Review |
-| `archived` | Veraltet, in `_archive/` verschoben |
+| Status | Meaning |
+|--------|---------|
+| `current` | Active and up to date |
+| `draft` | Work in progress |
+| `stale` | Needs review |
+| `archived` | Obsolete, moved to `_archive/` |
 
-## Projektregeln (aus CONTRACT.md)
+## Project Rules (from CONTRACT.md)
 
-- Zielplattform macOS 26.5, Swift-5-Sprachmodus, `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`
-  → alles, was USB macht oder blockiert, ist explizit `nonisolated` bzw. `@unchecked Sendable`
-- App-Sandbox aus, Hardened Runtime an; libusb statisch gelinkt, Bridging-Header vorhanden
-- Die Projektdatei wird bei neuen Dateien **nicht** angefasst (Dateisystem-synchronisierte Gruppe)
-- Kommentare und Oberflächentexte auf Deutsch, Bezeichner auf Englisch
-- Keine Quelldatei über 400 Zeilen
-- Änderungen am Sitzungsablauf oder am Drahtformat: **immer zuerst** `CONTRACT.md` prüfen,
-  dann die Artikel unter `protocol/` aktualisieren
+- Target platform macOS 26.5, Swift 5 language mode, `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`
+  → anything that touches USB or blocks is explicitly `nonisolated` and/or `@unchecked Sendable`
+- App Sandbox off, Hardened Runtime on; libusb statically linked, bridging header in place
+- The project file is **not** touched when files are added (file-system-synchronized group)
+- Code comments and user-facing strings are German, identifiers are English
+- No source file over 400 lines
+- Changes to the session flow or the wire format: **always check** `CONTRACT.md` first,
+  then update the articles under `protocol/`
 
-## Versionierung und Release Notes
+## Versioning and Release Notes
 
-- `MARKETING_VERSION` und `CURRENT_PROJECT_VERSION` aus `Sphaira Connect.xcodeproj/project.pbxproj`
-  sind die Single Source of Truth für Versions- und Build-Nummer
-- Release Notes liegen im Projekt unter `release_notes/v{VERSION}/build_{N}.md`
-  (eine Datei je Build, da es nur eine Plattform gibt), plus `README.md` je Versionsordner
-  und `release_notes/README.md` auf oberster Ebene
-- Wrap-Ablauf: Änderungen seit dem letzten Release-Commit ermitteln, Versions-/Build-Bump im
-  pbxproj entscheiden (neue Funktionen = Minor, nur Fixes = Patch), Build-Notes und
-  README-Tabellen schreiben, betroffene Wiki-Artikel samt `code_refs` und `updated`-Datum
-  aktualisieren (Pflichtteil jedes Wraps), Commit im Muster
-  `chore: v{VERSION} (Build {N}) — {Zusammenfassung}`
+- `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `Sphaira Connect.xcodeproj/project.pbxproj`
+  are the single source of truth for version and build number
+- Release notes live in the project under `release_notes/v{VERSION}/build_{N}.md`
+  (one file per build, since there is only one platform), plus a `README.md` per version folder
+  and a top-level `release_notes/README.md`
+- Wrap procedure: determine the changes since the last release commit, decide the version/build bump
+  in the pbxproj (new features = minor, fixes only = patch), write the build notes and README
+  tables, update the affected wiki articles including their `code_refs` and `updated` date
+  (a mandatory part of every wrap), then commit following the pattern
+  `chore: v{VERSION} (Build {N}) — {summary}`

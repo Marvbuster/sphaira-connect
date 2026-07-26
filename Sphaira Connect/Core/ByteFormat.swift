@@ -4,9 +4,9 @@ nonisolated enum ByteFormat {
     private static let dash = "–"
     private static let units = ["B", "kB", "MB", "GB", "TB", "PB"]
 
-    /// Folgt der eingestellten Sprache: Komma im Deutschen, Punkt im Englischen.
-    /// Bewusst bei jedem Aufruf gelesen, damit ein Sprachwechsel sofort greift —
-    /// die Anzeige aktualisiert ohnehin nur etwa zehnmal pro Sekunde.
+    /// Follows the selected language: comma in German, period in English.
+    /// Deliberately read on every call so a language change takes effect
+    /// immediately — the display only refreshes about ten times per second anyway.
     static var decimalSeparator: String {
         Locale.current.decimalSeparator ?? "."
     }
@@ -43,8 +43,8 @@ nonisolated enum ByteFormat {
         if unitIndex == 0 {
             return "\(Int(value)) B"
         }
-        // Genau eine Nachkommastelle, ohne NumberFormatter (der ist nicht
-        // threadsicher und die Aufrufer sind nonisolated).
+        // Exactly one decimal place, without NumberFormatter (it is not
+        // thread-safe and the callers are nonisolated).
         let tenths = Int((value * 10).rounded())
         return "\(tenths / 10)\(decimalSeparator)\(tenths % 10) \(units[unitIndex])"
     }

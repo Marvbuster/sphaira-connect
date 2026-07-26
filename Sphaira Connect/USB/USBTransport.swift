@@ -2,9 +2,9 @@
 //  USBTransport.swift
 //  Sphaira Connect
 //
-//  Rohe libusb-Anbindung an die Switch (Sphaira-USB-Installer).
-//  Alles hier läuft blockierend auf einem Hintergrund-Thread, daher
-//  durchgehend nonisolated.
+//  Raw libusb binding to the Switch (Sphaira USB installer).
+//  Everything here runs blocking on a background thread, hence
+//  nonisolated throughout.
 //
 
 import Foundation
@@ -19,15 +19,15 @@ final class USBTransport: @unchecked Sendable {
     nonisolated static let vendorID: UInt16 = 0x057E
     nonisolated static let productID: UInt16 = 0x3000
 
-    // libusb-Fehlercodes numerisch, da die C-Enum-Konstanten je nach Import
-    // nicht direkt mit Int32 vergleichbar sind.
+    // libusb error codes spelled out numerically, because depending on how the
+    // C enum is imported its constants are not directly comparable to Int32.
     private nonisolated static let errorTimeout: Int32 = -7  // LIBUSB_ERROR_TIMEOUT
     private nonisolated static let errorAccess: Int32 = -3   // LIBUSB_ERROR_ACCESS
     private nonisolated static let errorNoDevice: Int32 = -4 // LIBUSB_ERROR_NO_DEVICE
 
     private nonisolated static let readTimeoutMS: UInt32 = 500
-    /// Großzügiger als beim Lesen — ein Block ist unterwegs, soll aber nicht
-    /// unbegrenzt hängen können, sonst wäre der Abbruch wirkungslos.
+    /// More generous than for reads — a chunk is in flight, but it must not be
+    /// able to hang forever, otherwise cancellation would have no effect.
     private nonisolated static let writeTimeoutMS: UInt32 = 5_000
 
     nonisolated(unsafe) private var context: OpaquePointer?
@@ -42,7 +42,7 @@ final class USBTransport: @unchecked Sendable {
         close()
     }
 
-    // MARK: - Geräteerkennung
+    // MARK: - Device detection
 
     nonisolated static func isSwitchAttached() -> Bool {
         var context: OpaquePointer?
@@ -65,7 +65,7 @@ final class USBTransport: @unchecked Sendable {
         return false
     }
 
-    // MARK: - Verbindung
+    // MARK: - Connection
 
     nonisolated func open(cancel: () -> Bool) throws -> DeviceInfo {
         close()
@@ -77,7 +77,7 @@ final class USBTransport: @unchecked Sendable {
         }
         context = newContext
 
-        // Auf die Switch warten; cancel greift zwischen den Versuchen.
+        // Wait for the Switch; cancellation is checked between attempts.
         var deviceHandle: OpaquePointer?
         while deviceHandle == nil {
             if cancel() {
@@ -91,7 +91,7 @@ final class USBTransport: @unchecked Sendable {
         }
         handle = deviceHandle
 
-        // Auf macOS meist NOT_SUPPORTED — Rückgabewert bewusst ignoriert.
+        // Usually NOT_SUPPORTED on macOS — return value deliberately ignored.
         _ = libusb_set_auto_detach_kernel_driver(deviceHandle, 1)
 
         resolveEndpoints(deviceHandle: deviceHandle)
@@ -109,24 +109,24 @@ final class USBTransport: @unchecked Sendable {
         return DeviceInfo(
             manufacturer: stringDescriptor(index: descriptor.iManufacturer, fallback: "Nintendo"),
             product: stringDescriptor(index: descriptor.iProduct, fallback: "Nintendo Switch"),
-            serial: stringDescriptor(index: descriptor.iSerialNumber, fallback: "unbekannt")
+            serial: stringDescriptor(index: descriptor.iSerialNumber, fallback: String(localized: "unbekannt"))
         )
     }
 
-    /// Gibt die Verbindung frei und kehrt dabei sofort zurück.
+    /// Releases the connection and returns immediately.
     ///
-    /// Der eigentliche libusb-Abbau läuft im Hintergrund: Hat die Switch die
-    /// Verbindung ihrerseits schon abgebaut, können `libusb_close` und
-    /// `libusb_exit` blockieren. Da `close()` aus einem `defer` am Ende der
-    /// Sitzung läuft, würde das die Abschlussmeldung an die Oberfläche aufhalten
-    /// — die Übertragung sähe dann ewig „läuft" aus, obwohl sie fertig ist.
+    /// The actual libusb teardown runs in the background: if the Switch has
+    /// already torn the connection down on its side, `libusb_close` and
+    /// `libusb_exit` can block. Since `close()` runs from a `defer` at the end of
+    /// the session, that would hold back the completion message to the UI — the
+    /// transfer would look "in progress" forever even though it has finished.
     nonisolated func close() {
         let openHandle = handle
         let openContext = context
         let wasClaimed = interfaceClaimed
 
-        // Zuerst die eigenen Verweise lösen, damit ein zweiter Aufruf
-        // nichts doppelt freigibt.
+        // Clear our own references first so a second call cannot free
+        // anything twice.
         handle = nil
         context = nil
         interfaceClaimed = false
@@ -146,7 +146,7 @@ final class USBTransport: @unchecked Sendable {
         }
     }
 
-    // MARK: - Protokoll
+    // MARK: - Protocol
 
     nonisolated func readPacket(cancel: () -> Bool) throws -> Packet {
         let bytes = try read(count: Packet.byteCount, cancel: cancel)
@@ -164,7 +164,7 @@ final class USBTransport: @unchecked Sendable {
         try send(.ok, arg3: msb, arg4: lsb, cancel: cancel)
     }
 
-    // MARK: - Rohtransfers
+    // MARK: - Raw transfers
 
     nonisolated func write(_ bytes: [UInt8], cancel: () -> Bool) throws {
         guard let handle else {
@@ -182,9 +182,9 @@ final class USBTransport: @unchecked Sendable {
                     pointer.baseAddress! + sent, remaining,
                     &transferred, Self.writeTimeoutMS
                 )
-                // Endliches Timeout statt unbegrenztem Warten: Bleibt die Switch
-                // mitten im Block stehen, bliebe die Sitzung sonst unabbrechbar.
-                // Teilbytes können auch bei Timeout schon draußen sein.
+                // Finite timeout instead of waiting indefinitely: if the Switch
+                // stalls mid-chunk, the session would otherwise be impossible to
+                // cancel. Bytes may already have gone out even on a timeout.
                 if code == 0 || code == Self.errorTimeout {
                     sent += Int(transferred)
                 } else if code == Self.errorAccess {
@@ -196,8 +196,8 @@ final class USBTransport: @unchecked Sendable {
         }
     }
 
-    /// Liest exakt `count` Bytes; Timeouts sind kein Fehler, sondern
-    /// nur die Gelegenheit, `cancel` zu prüfen.
+    /// Reads exactly `count` bytes; a timeout is not an error, just an
+    /// opportunity to check `cancel`.
     private nonisolated func read(count: Int, cancel: () -> Bool) throws -> [UInt8] {
         guard let handle else {
             throw InstallError.usb(operation: "libusb_bulk_transfer(in)", code: Self.errorNoDevice)
@@ -214,7 +214,7 @@ final class USBTransport: @unchecked Sendable {
                     &transferred, Self.readTimeoutMS
                 )
                 if code == 0 || code == Self.errorTimeout {
-                    // Bei Timeout können trotzdem Teilbytes angekommen sein.
+                    // Some bytes may have arrived even on a timeout.
                     received += Int(transferred)
                 } else if code == Self.errorAccess {
                     throw InstallError.accessDenied
@@ -226,10 +226,10 @@ final class USBTransport: @unchecked Sendable {
         return buffer
     }
 
-    // MARK: - Hilfen
+    // MARK: - Helpers
 
-    /// Endpunkte aus der aktiven Konfiguration; erster IN- und erster
-    /// OUT-Endpunkt gewinnen. Ohne Treffer bleibt der Rückfall 0x81/0x01.
+    /// Endpoints taken from the active configuration; the first IN and the first
+    /// OUT endpoint win. With no match the fallback stays 0x81/0x01.
     private nonisolated func resolveEndpoints(deviceHandle: OpaquePointer?) {
         var config: UnsafeMutablePointer<libusb_config_descriptor>?
         guard libusb_get_active_config_descriptor(libusb_get_device(deviceHandle), &config) == 0,

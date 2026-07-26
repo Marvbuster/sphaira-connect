@@ -1,5 +1,5 @@
 ---
-title: "Build-Konfiguration — statisches libusb, Bridging-Header, Sandbox aus"
+title: "Build Configuration — Static libusb, Bridging Header, Sandbox Off"
 created: 2026-07-26
 updated: 2026-07-26
 category: operations
@@ -16,13 +16,13 @@ code_refs:
   - CONTRACT.md
 ---
 
-# Build-Konfiguration
+# Build Configuration
 
-Vier Einstellungen entscheiden darüber, ob dieses Projekt überhaupt baut und läuft: libusb wird **statisch** aus dem Homebrew-Präfix gelinkt, ein Bridging-Header macht die C-Schnittstelle ohne `import` global sichtbar, die App-Sandbox ist **aus** (sonst kein USB-Zugriff) bei eingeschalteter Hardened Runtime, und `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` stellt die Grundannahme des gesamten Quelltextes auf den Kopf. Dazu kommt eine Eigenheit des Projektformats: Die Quelldateien sind über eine `PBXFileSystemSynchronizedRootGroup` eingebunden, deshalb darf und muss die Projektdatei beim Anlegen neuer Dateien **nicht** angefasst werden.
+Four settings decide whether this project builds and runs at all: libusb is linked **statically** from the Homebrew prefix, a bridging header makes the C interface globally visible without an `import`, the App Sandbox is **off** (no USB access otherwise) while the Hardened Runtime is on, and `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` turns the basic assumption of the entire source tree upside down. On top of that comes a quirk of the project format: the source files are wired in through a `PBXFileSystemSynchronizedRootGroup`, which is why the project file may and must **not** be touched when new files are created.
 
-Alle Werte stehen in `Sphaira Connect.xcodeproj/project.pbxproj` und sind für Debug und Release identisch gesetzt.
+All values live in `Sphaira Connect.xcodeproj/project.pbxproj` and are set identically for Debug and Release.
 
-## libusb statisch linken
+## Linking libusb statically
 
 ```
 OTHER_LDFLAGS = (
@@ -45,23 +45,23 @@ LIBRARY_SEARCH_PATHS = (
 );
 ```
 
-Der Pfad zur statischen Bibliothek steht als **absoluter Pfad direkt in `OTHER_LDFLAGS`**, nicht als `-lusb-1.0`. Das ist Absicht: Mit `-l` würde der Linker die dynamische `libusb-1.0.dylib` bevorzugen, sobald sie im Suchpfad liegt — und dann bräuchte jeder Rechner, auf dem die App läuft, ein installiertes Homebrew-libusb an genau diesem Ort. Mit der `.a` ist die App eigenständig lauffähig; genau das steht auch im Kommentar des Bridging-Headers.
+The path to the static library is given as an **absolute path directly in `OTHER_LDFLAGS`**, not as `-lusb-1.0`. That is deliberate: with `-l` the linker would prefer the dynamic `libusb-1.0.dylib` as soon as it is on the search path — and then every machine running the app would need a Homebrew libusb installed at exactly that location. With the `.a`, the app runs standalone; the comment in the bridging header says the same thing.
 
-Die drei Frameworks sind die Abhängigkeiten der libusb-Backends auf macOS. Sie fehlen einer statischen Bibliothek naturgemäß, weil `.a`-Archive keine Abhängigkeiten mitführen — beim dynamischen Linken hätte man sie geschenkt bekommen. Vergisst man eines, scheitert der Build mit undefinierten Symbolen erst im Linker-Schritt.
+The three frameworks are the dependencies of the libusb backends on macOS. A static library inevitably lacks them, because `.a` archives do not carry their dependencies — with dynamic linking you would have got them for free. Forget one and the build fails with undefined symbols, and only in the link step.
 
-**Folgen für den Bauplatz:** Der Pfad `/opt/homebrew` ist der Apple-Silicon-Standard. Auf einem Intel-Mac (`/usr/local`) oder ohne installiertes `libusb`-Formula baut das Projekt nicht. `LIBRARY_SEARCH_PATHS` ist zusätzlich gesetzt, wirkt aber nur für `-l`-Referenzen.
+**Consequences for the build machine:** the path `/opt/homebrew` is the Apple Silicon default. On an Intel Mac (`/usr/local`) or without the `libusb` formula installed, the project does not build. `LIBRARY_SEARCH_PATHS` is set as well, but it only takes effect for `-l` references.
 
-## Bridging-Header
+## Bridging header
 
 ```
 SWIFT_OBJC_BRIDGING_HEADER = "Sphaira Connect/USB/SphairaConnect-Bridging-Header.h";
 ```
 
-Die Datei enthält genau eine wirksame Zeile — `#import <libusb.h>` — und wird über `HEADER_SEARCH_PATHS` aufgelöst. Der Effekt: `libusb_init`, `libusb_bulk_transfer` und alle anderen Symbole sind in **jeder** Swift-Datei des Ziels ohne `import` sichtbar. Deshalb steht in `USBTransport.swift` oben nur `import Foundation`.
+The file contains exactly one effective line — `#import <libusb.h>` — and is resolved via `HEADER_SEARCH_PATHS`. The effect: `libusb_init`, `libusb_bulk_transfer` and every other symbol are visible in **every** Swift file of the target without an `import`. This is why the top of `USBTransport.swift` only says `import Foundation`.
 
-Das ist bequem und gleichzeitig der Grund für eine Disziplinregel aus `CONTRACT.md`: libusb wird ausschließlich in `Sphaira Connect/USB/` benutzt. Der Compiler erzwingt das nicht — er würde einen `libusb_open`-Aufruf in einer SwiftUI-Ansicht anstandslos übersetzen. Details zur Nutzung stehen in [[usb/libusb-transport]].
+That is convenient and at the same time the reason for a discipline rule from `CONTRACT.md`: libusb is used exclusively inside `Sphaira Connect/USB/`. The compiler does not enforce it — it would happily compile a `libusb_open` call inside a SwiftUI view. Details on the usage are in [[usb/libusb-transport]].
 
-## Sandbox aus, Hardened Runtime an
+## Sandbox off, Hardened Runtime on
 
 ```
 ENABLE_APP_SANDBOX = NO;
@@ -69,15 +69,15 @@ ENABLE_HARDENED_RUNTIME = YES;
 ENABLE_USER_SELECTED_FILES = readonly;
 ```
 
-Die App-Sandbox erlaubt USB-Zugriff nur über das `com.apple.security.device.usb`-Recht, und selbst damit greift libusb auf macOS nicht zuverlässig auf ein rohes Bulk-Interface zu. Für dieses Projekt — eine lokale Entwickler- und Bastelanwendung, die kein App-Store-Ziel hat — ist die Sandbox deshalb abgeschaltet.
+The App Sandbox only permits USB access through the `com.apple.security.device.usb` entitlement, and even with it libusb does not reliably reach a raw bulk interface on macOS. For this project — a local developer and tinkering app with no App Store ambitions — the sandbox is therefore switched off.
 
-Die Hardened Runtime bleibt trotzdem an. Sie kostet hier nichts (kein JIT, keine geladenen Fremdbibliotheken, keine `DYLD_`-Umgebungstricks) und ist Voraussetzung für eine spätere Notarisierung.
+The Hardened Runtime nevertheless stays on. It costs nothing here (no JIT, no third-party libraries loaded, no `DYLD_` environment tricks) and is a prerequisite for notarisation later on.
 
-`ENABLE_USER_SELECTED_FILES = readonly` beschreibt ein Sandbox-Recht für vom Benutzer ausgewählte Dateien. Bei ausgeschalteter Sandbox hat die Einstellung keine praktische Wirkung; sie bleibt gesetzt, damit die Absicht dokumentiert ist — die App liest die ausgewählten Titel und schreibt nie zurück.
+`ENABLE_USER_SELECTED_FILES = readonly` describes a sandbox entitlement for user-selected files. With the sandbox off the setting has no practical effect; it stays set so the intent is documented — the app reads the selected titles and never writes back.
 
-Signiert wird mit `CODE_SIGN_STYLE = Automatic` und gesetztem `DEVELOPMENT_TEAM`.
+Signing uses `CODE_SIGN_STYLE = Automatic` with `DEVELOPMENT_TEAM` set.
 
-## Nebenläufigkeit: MainActor als Vorgabe
+## Concurrency: MainActor as the default
 
 ```
 SWIFT_VERSION = 5.0;
@@ -87,18 +87,19 @@ SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 MACOSX_DEPLOYMENT_TARGET = 26.5;
 ```
 
-`SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` ist die folgenreichste Zeile der ganzen Datei: **Jeder** Typ ohne ausdrückliche Angabe ist an den Hauptthread gebunden. Für eine Oberfläche ist das genau richtig — man spart sich `@MainActor` an jedem Ansichtsmodell und bekommt die Datenrennen-Prüfung geschenkt.
+`SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` is the most consequential line in the whole file:
+**every** type without an explicit annotation is bound to the main thread. For a user interface that is exactly right — you save yourself a `@MainActor` on every view model and get the data-race checking for free.
 
-Für alles, was blockiert, ist es eine Falle. Deshalb ist im gesamten Projekt jede blockierende oder in einem Hintergrund-Thread laufende Einheit ausdrücklich markiert:
+For anything that blocks, it is a trap. That is why every blocking unit, or one running on a background thread, is explicitly marked throughout the project:
 
-- `Sphaira Connect/USB/USBTransport.swift` und `InstallSession.swift`: `final class ... : @unchecked Sendable`, jede Methode `nonisolated`
-- `Sphaira Connect/Core/`: die Typen mit vorangestelltem `nonisolated` (`nonisolated enum CRC32C`, `nonisolated struct Packet`, `nonisolated enum ItemScanner`, …) — einzige Ausnahme ist `struct ProgressTracker`, das die Markierung nicht trägt; im Swift-5-Sprachmodus erzeugt sein Gebrauch aus der Sitzung nur eine Warnung ([[architecture/concurrency-and-cancellation]])
+- `Sphaira Connect/USB/USBTransport.swift` and `InstallSession.swift`: `final class ... : @unchecked Sendable`, every method `nonisolated`
+- `Sphaira Connect/Core/`: the types carry a leading `nonisolated` (`nonisolated enum CRC32C`, `nonisolated struct Packet`, `nonisolated enum ItemScanner`, …) — the only exception is `struct ProgressTracker`, which does not carry the marker; in the Swift 5 language mode its use from the session produces only a warning ([[architecture/concurrency-and-cancellation]])
 
-Ohne diese Markierungen würde der Übertragungsablauf auf dem MainActor landen und die Oberfläche für die gesamte Dauer einer XCI einfrieren; wie das Zusammenspiel im Einzelnen aussieht, beschreibt [[architecture/concurrency-and-cancellation]]. Dass die Core-Typen ausdrücklich `nonisolated` sind, ist außerdem die Voraussetzung dafür, dass sie im Testpaket ohne diese Build-Einstellung übersetzen — siehe [[operations/testing-strategy]].
+Without these markers the transfer flow would end up on the MainActor and freeze the UI for the entire duration of an XCI; how the pieces fit together in detail is described in [[architecture/concurrency-and-cancellation]]. The Core types being explicitly `nonisolated` is moreover the prerequisite for them compiling in the test package, which does not have this build setting — see [[operations/testing-strategy]].
 
-`MACOSX_DEPLOYMENT_TARGET = 26.5` ist keine Bequemlichkeit: Das Designsystem benutzt das native `glassEffect` von macOS 26.
+`MACOSX_DEPLOYMENT_TARGET = 26.5` is not a convenience: the design system uses the native `glassEffect` of macOS 26.
 
-## Dateisystem-synchronisierte Gruppe
+## File-system-synchronized group
 
 ```
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -110,27 +111,27 @@ Ohne diese Markierungen würde der Übertragungsablauf auf dem MainActor landen 
 /* End PBXFileSystemSynchronizedRootGroup section */
 ```
 
-Das Ziel referenziert diese Gruppe über `fileSystemSynchronizedGroups`. Alles, was unter `Sphaira Connect/` im Dateisystem liegt, wird automatisch kompiliert — es gibt **keine** `PBXBuildFile`-Einträge je Quelldatei und keine `PBXFileReference` außer der für das gebaute Produkt.
+The target references this group via `fileSystemSynchronizedGroups`. Everything that lives under `Sphaira Connect/` in the file system is compiled automatically — there are **no** per-source-file `PBXBuildFile` entries and no `PBXFileReference` other than the one for the built product.
 
-Praktische Regel daraus, wörtlich aus `CONTRACT.md`:
+The practical rule that follows, verbatim from `CONTRACT.md`:
 
-> Dateien liegen unter `Sphaira Connect/` und werden per `PBXFileSystemSynchronizedRootGroup` automatisch kompiliert. **Projektdatei nicht anfassen.**
+> Files live under `Sphaira Connect/` and are compiled automatically via `PBXFileSystemSynchronizedRootGroup`. **Do not touch the project file.**
 
-Eine neue Swift-Datei wird also einfach angelegt. Wer stattdessen versucht, sie „ordentlich" in die `project.pbxproj` einzutragen, erzeugt einen doppelten Übersetzungseintrag oder ein inkonsistentes Projekt. Das Format setzt `objectVersion = 77` voraus und ist damit an neuere Xcode-Versionen gebunden.
+So a new Swift file is simply created. Anyone who instead tries to register it "properly" in `project.pbxproj` produces a duplicate compilation entry or an inconsistent project. The format requires `objectVersion = 77` and is therefore tied to newer Xcode versions.
 
-Für Werkzeuge und Agenten heißt das auch: Ein Diff, der `project.pbxproj` verändert, ist bei reinen Quelltextänderungen ein Warnsignal.
+For tools and agents this also means: a diff that changes `project.pbxproj` is a warning sign when the change is supposed to be source-only.
 
-## Versionierung
+## Versioning
 
-`MARKETING_VERSION` (aktuell `1.0`) und `CURRENT_PROJECT_VERSION` (aktuell `1`) im pbxproj sind laut `.wiki/wiki.config.md` die einzige Quelle für Versions- und Build-Nummer; die Release-Notizen unter `release_notes/` folgen ihnen. Das Info.plist wird generiert (`GENERATE_INFOPLIST_FILE = YES`), es gibt also keine zweite Stelle, an der eine Version stehen könnte.
+`MARKETING_VERSION` (currently `1.0`) and `CURRENT_PROJECT_VERSION` (currently `1`) in the pbxproj are, according to `.wiki/wiki.config.md`, the single source for version and build number; the release notes under `release_notes/` follow them. The Info.plist is generated (`GENERATE_INFOPLIST_FILE = YES`), so there is no second place where a version could live.
 
-## Prüfliste bei Build-Fehlern
+## Checklist for build failures
 
-| Symptom | Wahrscheinliche Ursache |
+| Symptom | Likely cause |
 |---|---|
-| `'libusb.h' file not found` | `HEADER_SEARCH_PATHS` zeigt nicht auf `/opt/homebrew/include/libusb-1.0` oder das Formula fehlt |
-| Undefinierte Symbole `_libusb_*` | Pfad zur `.a` in `OTHER_LDFLAGS` stimmt nicht |
-| Undefinierte Symbole `_IOService*`, `_CF*`, `_Sec*` | Eines der drei Frameworks fehlt |
-| `libusb_claim_interface` liefert `-3` zur Laufzeit | Sandbox wieder eingeschaltet — siehe `accessDenied` in [[operations/troubleshooting]] |
-| „Cannot find … in scope" für einen frisch angelegten Typ | Datei liegt außerhalb von `Sphaira Connect/` |
-| `glassEffect` unbekannt | Deployment-Ziel unter macOS 26 |
+| `'libusb.h' file not found` | `HEADER_SEARCH_PATHS` does not point at `/opt/homebrew/include/libusb-1.0`, or the formula is missing |
+| Undefined symbols `_libusb_*` | The path to the `.a` in `OTHER_LDFLAGS` is wrong |
+| Undefined symbols `_IOService*`, `_CF*`, `_Sec*` | One of the three frameworks is missing |
+| `libusb_claim_interface` returns `-3` at runtime | Sandbox switched back on — see `accessDenied` in [[operations/troubleshooting]] |
+| "Cannot find … in scope" for a freshly created type | The file lives outside `Sphaira Connect/` |
+| `glassEffect` unknown | Deployment target below macOS 26 |

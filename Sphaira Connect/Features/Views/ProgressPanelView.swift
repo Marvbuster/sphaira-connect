@@ -1,15 +1,15 @@
 import SwiftUI
 
-/// Fortschrittsanzeige: Gesamtbalken und aktueller Dateibalken,
-/// Geschwindigkeit, Restzeit und "x von y".
+/// Progress display: overall bar and current-file bar, speed, remaining time
+/// and "x of y".
 struct ProgressPanelView: View {
     var progress: TransferProgress
     var totalCount: Int
     var isFinished: Bool = false
 
-    // Die Balken zeigen immer den echten Stand. Sie im Abschlusszustand auf
-    // 100 % zu zwingen, hat einen randvollen Balken neben ehrlichen Zahlen
-    // wie „741,8 MB von 1,1 GB" erzeugt — die Anzeige log dann.
+    // The bars always show the real state. Forcing them to 100 % in the finished
+    // state produced a full bar next to honest numbers like "741.8 MB of 1.1 GB"
+    // — the display was lying.
     private var overallFraction: Double {
         guard progress.overallTotal > 0 else { return 0 }
         return min(1, Double(progress.overallSent) / Double(progress.overallTotal))
@@ -20,7 +20,7 @@ struct ProgressPanelView: View {
         return min(1, Double(progress.itemSent) / Double(progress.itemTotal))
     }
 
-    /// Vollständig heißt: alle Bytes sind wirklich geflossen.
+    /// Complete means: every byte actually went over the wire.
     private var isComplete: Bool {
         isFinished && progress.overallSent >= progress.overallTotal
     }
@@ -91,7 +91,7 @@ struct ProgressPanelView: View {
         .accessibilityLabel("Fortschritt: \(Int(overallFraction * 100)) Prozent, \(progress.itemName)")
     }
 
-    /// Balken mit abgerundeten Enden und weicher Animation.
+    /// Bar with rounded caps and a soft animation.
     private func bar(fraction: Double, tint: Color, height: CGFloat) -> some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
@@ -99,7 +99,7 @@ struct ProgressPanelView: View {
                     .fill(Color.white.opacity(0.12))
                 Capsule()
                     .fill(tint.gradient)
-                    // Mindestbreite = Höhe, damit die Kapsel nie zum Strich kollabiert.
+                    // Minimum width = height, so the capsule never collapses into a line.
                     .frame(width: max(height, geo.size.width * fraction))
             }
         }

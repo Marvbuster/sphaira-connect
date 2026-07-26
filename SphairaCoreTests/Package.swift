@@ -1,8 +1,8 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
-// Eigenständiges Testpaket: bindet die Core-Quellen des Xcode-Projekts
-// per Symlink ein, damit es keine zweite Kopie der Dateien gibt.
+// Standalone test package: pulls in the Xcode project's Core sources via a
+// symlink, so there is never a second copy of the files.
 let package = Package(
     name: "SphairaCoreTests",
     platforms: [.macOS(.v14)],

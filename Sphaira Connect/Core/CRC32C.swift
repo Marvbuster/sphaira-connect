@@ -1,7 +1,7 @@
 import Foundation
 
-// CRC-32C (Castagnoli), gespiegeltes Polynom 0x82F63B78.
-// nonisolated, damit der USB-Code sie abseits des MainActors aufrufen kann.
+// CRC-32C (Castagnoli), reflected polynomial 0x82F63B78.
+// nonisolated so the USB code can call it off the MainActor.
 nonisolated enum CRC32C {
     private static let table: [UInt32] = {
         (0..<256).map { index -> UInt32 in

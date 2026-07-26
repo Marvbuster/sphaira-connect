@@ -2,8 +2,8 @@ import SwiftUI
 import AppKit
 
 struct WindowStyleConfigurator: NSViewRepresentable {
-    /// Jede Wertänderung passt das Fenster animiert an die ideale
-    /// Inhaltsgröße an (so klein wie möglich, so groß wie nötig).
+    /// Every change of this value animates the window to its ideal content size
+    /// (as small as possible, as large as necessary).
     var sizeKey: AnyHashable = false
 
     func makeNSView(context: Context) -> NSView {
@@ -21,8 +21,8 @@ struct WindowStyleConfigurator: NSViewRepresentable {
             super.viewDidMoveToWindow()
             guard let window = self.window else { return }
             applyTransparentTitlebar(window)
-            // AppKit stellt beim Start den zuletzt gesicherten Rahmen wieder her —
-            // Persistenz abschalten und einmal an den Inhalt anpassen.
+            // On launch AppKit restores the last saved frame — turn that
+            // persistence off and fit to the content once.
             window.setFrameAutosaveName("")
             window.isRestorable = false
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
@@ -37,7 +37,7 @@ struct WindowStyleConfigurator: NSViewRepresentable {
             }
             guard previous != key else { return }
             lastKey = key
-            // Erst SwiftUI das neue Layout festschreiben lassen, dann anpassen.
+            // Let SwiftUI commit the new layout first, then resize.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
                 self?.fitWindowToContent()
             }
@@ -45,8 +45,8 @@ struct WindowStyleConfigurator: NSViewRepresentable {
 
         private func fitWindowToContent() {
             guard let window = self.window, let content = window.contentView else { return }
-            // NSHostingView meldet die SwiftUI-Idealgröße über intrinsicContentSize;
-            // fittingSize kann stillschweigend Null liefern.
+            // NSHostingView reports the SwiftUI ideal size via intrinsicContentSize;
+            // fittingSize can silently return zero.
             var fitting = content.intrinsicContentSize
             if fitting.width <= 100 || fitting.height <= 100 {
                 fitting = content.fittingSize
@@ -54,7 +54,7 @@ struct WindowStyleConfigurator: NSViewRepresentable {
             guard fitting.width > 100, fitting.height > 100 else { return }
             var frame = window.frameRect(forContentRect: NSRect(origin: .zero, size: fitting))
             let old = window.frame
-            frame.origin = NSPoint(x: old.origin.x, y: old.maxY - frame.height) // obere linke Ecke halten
+            frame.origin = NSPoint(x: old.origin.x, y: old.maxY - frame.height) // keep the top-left corner fixed
             window.setFrame(frame, display: true, animate: true)
         }
 
@@ -65,7 +65,7 @@ struct WindowStyleConfigurator: NSViewRepresentable {
             window.backgroundColor = .clear
             window.styleMask.insert(.fullSizeContentView)
             window.isMovableByWindowBackground = true
-            // Ampelknöpfe bleiben sichtbar
+            // Traffic-light buttons stay visible
             window.standardWindowButton(.closeButton)?.isHidden = false
             window.standardWindowButton(.miniaturizeButton)?.isHidden = false
             window.standardWindowButton(.zoomButton)?.isHidden = false

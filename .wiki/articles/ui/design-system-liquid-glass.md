@@ -1,9 +1,9 @@
 ---
-title: "Designsystem — Liquid Glass, Tokens und das Glas-in-Glas-Verbot"
+title: "Design System — Liquid Glass, Tokens and the No-Glass-on-Glass Rule"
 created: 2026-07-26
 updated: 2026-07-26
 category: ui
-tags: [designsystem, liquid-glass, swiftui, appkit, tokens, macos-26]
+tags: [design-system, liquid-glass, swiftui, appkit, tokens, macos-26]
 status: current
 related:
   - ui/window-and-views
@@ -15,35 +15,35 @@ code_refs:
   - Sphaira Connect/Shared/GlassInteractive.swift
 ---
 
-# Designsystem
+# Design System
 
-Vier Dateien unter `Sphaira Connect/Shared/` bilden das gesamte visuelle Vokabular: Maße, Schriften und Farben als Konstanten (`DesignTokens.swift`), zwei Hintergrund-Bausteine (`GlassEffectTheme.swift`), ein Knopf (`GlassButton.swift`) und ein Hover-Modifikator (`GlassInteractive.swift`). Die zentrale Regel dahinter ist ein Verbot: **Glas darf nicht in Glas geschachtelt werden.** Deshalb gibt es mit `GlassBackground` und `connectCard` bewusst zwei Kartenhintergründe, von denen nur einer echtes Glas ist.
+Four files under `Sphaira Connect/Shared/` make up the entire visual vocabulary: metrics, fonts and colors as constants (`DesignTokens.swift`), two background building blocks (`GlassEffectTheme.swift`), one button (`GlassButton.swift`) and a hover modifier (`GlassInteractive.swift`). The central rule behind them is a prohibition: **glass must not be nested inside glass.** That is why there are deliberately two card backgrounds, `GlassBackground` and `connectCard`, only one of which is real glass.
 
 ## Tokens
 
-`DesignTokens.swift` enthält keine Logik, nur Konstanten — 37 Zeilen, bewusst knapp gehalten.
+`DesignTokens.swift` contains no logic, only constants — 37 lines, deliberately terse.
 
-| Enum | Inhalt |
+| Enum | Contents |
 |---|---|
 | `Spacing` | `xs` 4, `sm` 8, `md` 12, `lg` 16, `xl` 24, `xxl` 32 |
 | `Fonts` | `title` 24/semibold, `subtitle` 16/regular, `mono` (`.body`, `.monospaced`), `helper` 12/regular, `badge` 11/semibold |
-| `Colors` | drei Hintergrundschleier plus `accent`, `success`, `warning`, `danger` |
+| `Colors` | three background tints plus `accent`, `success`, `warning`, `danger` |
 
-Die Zustands-Hintergrundschleier sind der auffälligste Teil der Oberfläche — das Fenster wechselt seine Grundstimmung mit der Phase der Übertragung:
+The state tints are the most conspicuous part of the interface — the window changes its overall mood with the phase of the transfer:
 
 ```swift
-static let backgroundTint = Color(hex: 0x0B1220, alpha: 0.45)        // ruhiges Blau, Grundzustand
-static let backgroundTintActive = Color(hex: 0x0E2416, alpha: 0.42)  // grünlich, während der Übertragung
-static let backgroundTintError = Color(hex: 0x2A0E12, alpha: 0.42)   // rötlich, bei Fehlern
+static let backgroundTint = Color(hex: 0x0B1220, alpha: 0.45)        // calm blue, base state
+static let backgroundTintActive = Color(hex: 0x0E2416, alpha: 0.42)  // greenish, during the transfer
+static let backgroundTintError = Color(hex: 0x2A0E12, alpha: 0.42)   // reddish, on errors
 ```
 
-Drei Punkte sind daran wichtig:
+Three things matter about this:
 
-- Es sind **sehr dunkle, sehr entsättigte** Farben — kein sattes Grün, sondern ein fast schwarzer Grünstich. Der Schleier liegt über der Schreibtisch-Unschärfe und soll die Stimmung kippen, nicht die Oberfläche einfärben.
-- Alle drei sind halbtransparent (0,42–0,45). Ohne Alpha würde die Unschärfe darunter verschwinden.
-- `accent`, `success`, `warning` und `danger` sind bewusst die Systemfarben (`Color.accentColor`, `.green`, `.yellow`, `.red`) — sie folgen damit der Systemeinstellung des Benutzers und dem Kontrastverhalten von macOS.
+- These are **very dark, very desaturated** colors — not a rich green but an almost black hint of green. The tint sits on top of the desktop blur and is meant to shift the mood, not to colorize the interface.
+- All three are semi-transparent (0.42–0.45). Without alpha, the blur underneath would disappear.
+- `accent`, `success`, `warning` and `danger` are deliberately the system colors (`Color.accentColor`, `.green`, `.yellow`, `.red`) — that way they follow the user's system settings and the contrast behaviour of macOS.
 
-`Color(hex:alpha:)` ist die übliche Zerlegung in drei Byte-Kanäle:
+`Color(hex:alpha:)` is the usual decomposition into three byte channels:
 
 ```swift
 extension Color {
@@ -56,9 +56,9 @@ extension Color {
 }
 ```
 
-Wer welchen Schleier wann bekommt, entscheidet `RootView` anhand der Phase — siehe [[ui/window-and-views]].
+Which tint applies when is decided by `RootView` based on the phase — see [[ui/window-and-views]].
 
-## GlassBackground — echtes Glas
+## GlassBackground — real glass
 
 ```swift
 struct GlassBackground: View {
@@ -77,11 +77,11 @@ struct GlassBackground: View {
 }
 ```
 
-Das native `glassEffect` von macOS 26 macht die eigentliche Arbeit — Brechung, Kantenlicht, Anpassung an den Untergrund. Der Sonderfall `tint == .clear` verhindert, dass ein durchsichtiger Farbton als Tönung übergeben wird; dann kommt schlicht `.regular` zum Einsatz.
+The native `glassEffect` of macOS 26 does the actual work — refraction, edge highlight, adaptation to whatever is behind it. The special case `tint == .clear` prevents a transparent color from being passed in as a tint; plain `.regular` is used instead.
 
-Im Projekt wird `GlassBackground` nur an **einer** Stelle benutzt: der `StatusPill` in der Titelleisten-Zone. Genau dort ist es richtig — die Pille schwebt frei über dem Fensterhintergrund und liegt in keiner anderen Glasfläche.
+In this project `GlassBackground` is used in exactly **one** place: the `StatusPill` in the title-bar zone. That is precisely where it belongs — the pill floats freely above the window background and does not sit inside any other glass surface.
 
-## VisualEffectBlur — die Unschärfe hinter dem Fenster
+## VisualEffectBlur — the blur behind the window
 
 ```swift
 struct VisualEffectBlur: NSViewRepresentable {
@@ -96,20 +96,20 @@ struct VisualEffectBlur: NSViewRepresentable {
 }
 ```
 
-Der Kommentar darüber nennt den Grund für den AppKit-Umweg:
+The comment above it names the reason for the detour through AppKit:
 
-> Unschärfe hinter dem Fenster — glassEffect kann den Schreibtisch hinter dem Fenster nicht abtasten, NSVisualEffectView schon.
+> Blur behind the window — glassEffect cannot sample the desktop behind the window, NSVisualEffectView can.
 
-Das ist die entscheidende Arbeitsteilung: `glassEffect` bricht, was **im Fenster** hinter dem Element liegt. Was hinter der Fensterscheibe auf dem Schreibtisch steht, sieht nur `NSVisualEffectView` mit `blendingMode = .behindWindow`. Deshalb bildet der Blur in `RootView` die unterste Ebene des `ZStack`, und deshalb muss das Fenster überhaupt transparent sein (`isOpaque = false`, `backgroundColor = .clear` in `WindowStyleConfigurator`).
+That is the crucial division of labour: `glassEffect` refracts whatever lies **inside the window** behind the element. What is on the desktop behind the window pane is only seen by `NSVisualEffectView` with `blendingMode = .behindWindow`. This is why the blur forms the bottom layer of the `ZStack` in `RootView`, and why the window has to be transparent in the first place (`isOpaque = false`, `backgroundColor = .clear` in `WindowStyleConfigurator`).
 
-`state = .active` erzwingt die Unschärfe auch dann, wenn das Fenster nicht im Vordergrund ist — sonst würde das Fenster beim Fokuswechsel sichtbar „umkippen".
+`state = .active` forces the blur even when the window is not frontmost — otherwise the window would visibly "flip" whenever focus changes.
 
-## connectCard — Gruppierung ohne Glas
+## connectCard — grouping without glass
 
 ```swift
 extension View {
-    // Gruppierung ohne Glaseffekt für Bereiche, die selbst Glaselemente
-    // enthalten (Glas in Glas wird nicht unterstützt und rendert unscharf)
+    // Grouping without a glass effect for areas that themselves contain glass
+    // elements (glass in glass is unsupported and renders blurry)
     func connectCard(radius: CGFloat = 14, tint: Color = Colors.backgroundTint) -> some View {
         background(
             RoundedRectangle(cornerRadius: radius, style: .continuous)
@@ -120,30 +120,30 @@ extension View {
 }
 ```
 
-Das ist die praktisch wichtigste Regel des Designsystems. Verschachteltes Glas wird von macOS nicht unterstützt; das Ergebnis ist kein Fehler, sondern eine matschige, doppelt gebrochene Fläche, bei der die Konturen der inneren Elemente verschwimmen. Man merkt es erst, wenn man es sieht — und dann sucht man den Fehler an der falschen Stelle.
+This is the practically most important rule of the design system. Nested glass is not supported by macOS; the result is not an error but a mushy, doubly refracted surface in which the contours of the inner elements smear. You only notice it once you see it — and then you go looking for the bug in the wrong place.
 
-Statt Glas nimmt `connectCard` deshalb die klassische Kombination aus Farbfüllung und `.thinMaterial`. Optisch nah genug, aber schachtelbar.
+Instead of glass, `connectCard` therefore uses the classic combination of a color fill and `.thinMaterial`. Visually close enough, but nestable.
 
-Angewendet wird `connectCard` auf genau die drei Bereiche, die selbst Bedienelemente oder Glasflächen enthalten können:
+`connectCard` is applied to exactly the three areas that can themselves contain controls or glass surfaces:
 
-| Ansicht | Aufruf |
+| View | Call |
 |---|---|
-| `QueueListView` | `.connectCard()` (Radius 14) |
-| `ProgressPanelView` | `.connectCard()` (Radius 14) |
+| `QueueListView` | `.connectCard()` (radius 14) |
+| `ProgressPanelView` | `.connectCard()` (radius 14) |
 | `LogConsoleView` | `.connectCard(radius: 12)` |
 
-`DropZoneView` benutzt keinen der beiden Hintergründe, sondern eine eigene gestrichelte Umrandung mit sehr schwacher Füllung — eine Ablagefläche soll nicht wie eine Karte aussehen, sondern wie ein Loch.
+`DropZoneView` uses neither background but its own dashed border with a very faint fill — a drop zone should not look like a card, it should look like a hole.
 
 ## GlassButton
 
-`GlassButton` ist der einzige Knopf des Projekts. Vier Ausprägungen, zwei Größen:
+`GlassButton` is the project's only button. Four kinds, two sizes:
 
 ```swift
 enum GlassButtonKind { case clear, green, red, orange }
 enum GlassButtonSize { case compact, standard }
 ```
 
-Die Größe trägt ihre Maße selbst, statt sie an der Aufrufstelle zu verteilen:
+The size carries its own metrics instead of scattering them across the call sites:
 
 | | `compact` | `standard` |
 |---|---|---|
@@ -153,7 +153,7 @@ Die Größe trägt ihre Maße selbst, statt sie an der Aufrufstelle zu verteilen
 | `font` | 13/semibold | 14/semibold |
 | `spacing` | `Spacing.sm` | `Spacing.md` |
 
-Das Glas selbst liegt in einem privaten `ViewModifier`:
+The glass itself lives in a private `ViewModifier`:
 
 ```swift
 private var glass: Glass {
@@ -166,14 +166,14 @@ private var glass: Glass {
 }
 ```
 
-`.interactive()` schaltet die native Reaktion des Glases auf Zeiger und Druck ein. Die Tönungen sind mit 0,2 Deckkraft absichtlich schwach — ein grüner Knopf soll grünlich schimmern, nicht grün sein.
+`.interactive()` enables the glass's native reaction to pointer and press. The tints are deliberately weak at 0.2 opacity — a green button should shimmer greenish, not be green.
 
-Drumherum vier bewusste Entscheidungen:
+Around it, four deliberate decisions:
 
-- `.buttonStyle(.plain)` — der Systemstil würde einen zweiten Hintergrund unter das Glas legen.
-- `.contentShape(Rectangle())` — sonst wäre nur der Text klickbar, nicht die ganze Glasfläche.
-- `.disabled(!isEnabled)` **und** `.opacity(isEnabled ? 1.0 : 0.45)` — Glas alleine zeigt einen gesperrten Zustand nicht deutlich genug an.
-- `isEnabled` ist ein normaler Parameter, keine Umgebungsvariable. `RootView` reicht dort Ausdrücke wie `!model.items.isEmpty && !model.isBusy` und `model.canStart` hinein.
+- `.buttonStyle(.plain)` — the system style would put a second background underneath the glass.
+- `.contentShape(Rectangle())` — otherwise only the text would be clickable, not the whole glass surface.
+- `.disabled(!isEnabled)` **and** `.opacity(isEnabled ? 1.0 : 0.45)` — glass alone does not indicate a disabled state clearly enough.
+- `isEnabled` is an ordinary parameter, not an environment value. `RootView` passes expressions such as `!model.items.isEmpty && !model.isBusy` and `model.canStart` into it.
 
 ## glassInteractive
 
@@ -183,20 +183,20 @@ extension View {
 }
 ```
 
-Der Modifikator legt bei Hover eine weiße Überlagerung mit 0,08 Deckkraft über das Element und blendet einen weichen Schatten ein (`radius: 10`, `y: 4`, Schwarz mit 0,20). Beides wird mit `.animation(.snappy(duration: 0.18), value: hovered)` weich geschaltet.
+On hover, the modifier lays a white overlay at 0.08 opacity over the element and fades in a soft shadow (`radius: 10`, `y: 4`, black at 0.20). Both are switched smoothly with `.animation(.snappy(duration: 0.18), value: hovered)`.
 
-Zwei Details, die man leicht falsch macht:
+Two details that are easy to get wrong:
 
-- Die Überlagerung ist `.allowsHitTesting(false)`. Ohne das würde sie den Klick abfangen, den sie visuell ankündigt.
-- Der `hovered`-Zustand steckt im Modifikator, nicht im Knopf. Dadurch ist `glassInteractive` unabhängig von `GlassButton` auf beliebige Ansichten anwendbar.
+- The overlay is `.allowsHitTesting(false)`. Without that it would swallow the very click it visually advertises.
+- The `hovered` state lives in the modifier, not in the button. That makes `glassInteractive` applicable to arbitrary views independently of `GlassButton`.
 
-Aktuell nutzt ihn nur `GlassButton` (in `body`, direkt nach `contentShape`). `QueueRow` in `QueueListView` bringt seine eigene, andersartige Hover-Logik mit, weil eine Tabellenzeile keinen Schatten werfen soll.
+Right now only `GlassButton` uses it (in `body`, directly after `contentShape`). `QueueRow` in `QueueListView` brings its own, different hover logic, because a table row should not cast a shadow.
 
-## Zusammengefasst: welchen Hintergrund nehme ich?
+## In summary: which background do I use?
 
-| Situation | Baustein |
+| Situation | Building block |
 |---|---|
-| Freischwebendes kleines Element über dem Fensterhintergrund | `GlassBackground` |
-| Karte, die Knöpfe, Listen oder andere Glasflächen enthält | `connectCard` |
-| Unterste Fensterebene (Schreibtisch-Unschärfe) | `VisualEffectBlur` |
-| Anklickbare Fläche | `GlassButton` bzw. `glassInteractive` |
+| Small free-floating element above the window background | `GlassBackground` |
+| Card that contains buttons, lists or other glass surfaces | `connectCard` |
+| Bottom window layer (desktop blur) | `VisualEffectBlur` |
+| Clickable surface | `GlassButton` or `glassInteractive` |

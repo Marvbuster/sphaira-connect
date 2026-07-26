@@ -1,9 +1,9 @@
 ---
-title: "Fehlersuche — Praxisfunde und ihre Lösungen"
+title: "Troubleshooting — Field Findings and Their Fixes"
 created: 2026-07-26
 updated: 2026-07-26
 category: operations
-tags: [fehlersuche, praxis, libusb, fortschritt, nswindow, abbruch]
+tags: [troubleshooting, field-findings, libusb, progress, nswindow, cancellation]
 status: current
 related:
   - usb/libusb-transport
@@ -21,47 +21,47 @@ code_refs:
   - SphairaCoreTests/Tests/SphairaCoreTests/ProgressTrackerTests.swift
 ---
 
-# Fehlersuche
+# Troubleshooting
 
-Diese Seite sammelt Fehler, die beim Bau von Sphaira Connect tatsächlich aufgetreten sind — nicht hypothetische. Jeder Fall steht als Symptom, Ursache, Lösung und Fundstelle im Code. Die Mehrzahl hat dieselbe Wurzel: Die Switch verhält sich anders als ein braves USB-Gerät, und zwei Zustandsmaschinen (Protokollablauf und Oberfläche) laufen auf verschiedenen Threads.
+This page collects bugs that actually occurred while building Sphaira Connect — not hypothetical ones. Each case is given as symptom, cause, fix and where it lives in the code. Most of them share the same root: the Switch does not behave like a well-mannered USB device, and two state machines (protocol flow and user interface) run on different threads.
 
 ---
 
-## 1. XCI springt sofort auf 100 %
+## 1. XCI jumps straight to 100 %
 
-**Symptom.** Beim Übertragen einer XCI zeigt der Fortschrittsbalken innerhalb der ersten Sekunde 100 % an und bleibt dann minutenlang dort stehen. Bei NSP-Dateien war es unauffällig oder deutlich schwächer ausgeprägt.
+**Symptom.** While transferring an XCI, the progress bar shows 100 % within the first second and then sits there for minutes. With NSP files it was inconspicuous or much less pronounced.
 
-**Ursache.** Der Fortschritt wurde als **Hochwassermarke** über die von der Switch angeforderte Position gerechnet: `max(bisher, offset + gelesen)` — so steht es auch noch im ursprünglichen Ablauf in `CONTRACT.md`. Die Annahme dahinter ist, dass die Gegenstelle eine Datei von vorne nach hinten durchliest. Sphaira tut das nicht: Es liest Kopf- und Partitionsdaten quer über die Datei, bei einer XCI oft schon im ersten Zugriff nahe dem Dateiende. Ein einziger 64-KB-Block bei Offset 17,4 GB setzt die Hochwassermarke auf 17,4 GB von 17,5 GB.
+**Cause.** Progress was computed as a **high-water mark** over the position requested by the Switch: `max(so far, offset + bytes read)` — which is still how the original flow in `CONTRACT.md` describes it. The assumption behind it is that the peer reads a file from front to back. Sphaira does not do that: it reads header and partition data scattered across the file, with an XCI often near the end of the file on the very first access. A single 64 KB block at offset 17.4 GB sets the high-water mark to 17.4 GB out of 17.5 GB.
 
-**Lösung.** `ProgressTracker` zählt nur noch **tatsächlich übertragene Bytes** und ignoriert die Position vollständig:
+**Fix.** `ProgressTracker` now counts only the **bytes actually transferred** and ignores the position completely:
 
 ```swift
-/// Zählt einen übertragenen Block.
+/// Records a transferred block.
 ///
-/// Die von der Switch angeforderte Position geht bewusst NICHT ein: Sie liest
-/// Kopf- und Partitionsdaten quer über die Datei, oft früh nahe dem Ende. Eine
-/// Hochwassermarke über die höchste Position stünde dadurch sofort bei 100 %.
+/// The position requested by the Switch is deliberately NOT taken into account:
+/// it reads header and partition data across the file, often early on near the
+/// end. A high-water mark over the highest position would sit at 100 % at once.
 mutating func record(chunkSize: Int) {
     guard chunkSize > 0 else { return }
     sentBytes += Int64(chunkSize)
 }
 ```
 
-Weil die Switch Bereiche auch **mehrfach** anfordern darf, kann die Summe die Dateigröße übersteigen. Deshalb gibt es `clampedSent` (`min(sentBytes, totalBytes)`) und einen ebenfalls geklemmten `fraction`. Die Anzeige läuft damit monoton bis 100 % und nie darüber.
+Because the Switch is allowed to request ranges **more than once**, the sum can exceed the file size. Hence `clampedSent` (`min(sentBytes, totalBytes)`) and a likewise clamped `fraction`. The display therefore rises monotonically to 100 % and never beyond.
 
-**Abgesichert durch** `SphairaCoreTests/Tests/SphairaCoreTests/ProgressTrackerTests.swift`, Test `lateOffsetDoesNotInflateProgress` — mit dem echten Zahlenpaar aus dem Fehlerfall (17,5 GB Gesamtgröße, 64 KB übertragen, `fraction < 0.0001`).
+**Covered by** `SphairaCoreTests/Tests/SphairaCoreTests/ProgressTrackerTests.swift`, test `lateOffsetDoesNotInflateProgress` — with the real pair of numbers from the failure (17.5 GB total size, 64 KB transferred, `fraction < 0.0001`).
 
-**Merksatz.** Fortschritt ist, was durch die Leitung ging — nicht, wo die Gegenstelle gerade liest. Die vollständige Rechnung steht in [[protocol/progress-tracking]].
+**Rule of thumb.** Progress is what went over the wire — not where the peer happens to be reading. The full calculation is in [[protocol/progress-tracking]].
 
 ---
 
-## 2. „Läuft" bleibt ewig stehen, obwohl alles übertragen ist
+## 2. "Running" stays on screen forever even though everything is transferred
 
-**Symptom.** Die letzte Datei ist durch, das Protokoll zeigt „Switch hat die Sitzung beendet.", aber die Oberfläche bleibt im Zustand „läuft": Abbrechen aktiv, Installieren gesperrt, Balken eingefroren. Sekunden später — oder gar nicht — kam die Abschlussmeldung.
+**Symptom.** The last file is through, the log shows "Switch hat die Sitzung beendet.", but the UI stays in the "running" state: Cancel active, Install disabled, bar frozen. Seconds later — or never — the completion message arrived.
 
-**Ursache.** `InstallSession.run` räumt den Transport per `defer { transport.close() }` ab. `close()` rief synchron `libusb_release_interface`, `libusb_close` und `libusb_exit`. Hat die Switch die Verbindung ihrerseits bereits abgebaut — was am Sitzungsende genau der Fall ist —, können diese Aufrufe blockieren. Das `defer` läuft **vor** der Rückkehr aus `run`, also vor `continuation.yield(.finished(...))`. Ergebnis: Die fertige Übertragung meldet sich erst, wenn libusb sich losgerissen hat.
+**Cause.** `InstallSession.run` tears the transport down via `defer { transport.close() }`. `close()` called `libusb_release_interface`, `libusb_close` and `libusb_exit` synchronously. If the Switch has already dropped the connection on its side — which is exactly what happens at the end of a session — these calls can block. The `defer` runs **before** returning from `run`, so before `continuation.yield(.finished(...))`. Result: the finished transfer only reports in once libusb has torn itself loose.
 
-**Lösung.** `close()` löst die eigenen Verweise sofort und schiebt den libusb-Abbau auf eine Hintergrundschlange:
+**Fix.** `close()` clears its own references immediately and pushes the libusb teardown onto a background queue:
 
 ```swift
 handle = nil
@@ -83,61 +83,61 @@ DispatchQueue.global(qos: .utility).async {
 }
 ```
 
-Das Nullen **vor** dem Absetzen des Blocks ist Teil der Lösung: Ein zweiter `close()`-Aufruf (etwa aus `deinit`) darf nichts doppelt freigeben. Weil jede Sitzung einen frischen `USBTransport` mit eigenem Kontext bekommt, stört der kurz überlebende Altkontext nicht. Details in [[usb/libusb-transport]].
+Nulling out the references **before** dispatching the block is part of the fix: a second `close()` call (from `deinit`, say) must not free anything twice. Since every session gets a fresh `USBTransport` with its own context, the old context outliving it briefly does no harm. Details in [[usb/libusb-transport]].
 
 ---
 
-## 3. Pakete werden plötzlich als `badMagic` oder `checksumMismatch` abgelehnt
+## 3. Packets are suddenly rejected as `badMagic` or `checksumMismatch`
 
-**Symptom.** Mitten in einer laufenden Übertragung bricht die Sitzung mit einem Prüfsummen- oder Magic-Fehler ab, obwohl Kabel und Konsole in Ordnung sind. Ein erneuter Versuch scheitert an einer anderen Stelle.
+**Symptom.** In the middle of a running transfer the session aborts with a checksum or magic error, even though cable and console are fine. A second attempt fails at a different point.
 
-**Ursache.** `libusb_bulk_transfer` schreibt die tatsächlich übertragene Menge auch dann nach `transferred`, wenn es `LIBUSB_ERROR_TIMEOUT` (-7) zurückgibt. Wird dieser Wert im Timeout-Zweig verworfen, hat der Puffer bereits Bytes bekommen, die niemand mitgezählt hat. Ab da ist der Bytestrom um genau diese Menge verschoben, und das nächste 24-Byte-Paket wird an der falschen Stelle dekodiert — mit falscher Magic oder falscher Prüfsumme.
+**Cause.** `libusb_bulk_transfer` writes the amount actually transferred into `transferred` even when it returns `LIBUSB_ERROR_TIMEOUT` (-7). If that value is discarded in the timeout branch, the buffer has already received bytes that nobody counted. From then on the byte stream is shifted by exactly that amount, and the next 24-byte packet is decoded at the wrong position — with the wrong magic or the wrong checksum.
 
-**Lösung.** In beiden Richtungen wird `transferred` im Timeout-Zweig mitgezählt:
+**Fix.** In both directions `transferred` is counted in the timeout branch:
 
 ```swift
 if code == 0 || code == Self.errorTimeout {
-    // Bei Timeout können trotzdem Teilbytes angekommen sein.
+    // Even on a timeout, partial bytes may have arrived.
     received += Int(transferred)
 }
 ```
 
-**Merksatz.** `LIBUSB_ERROR_TIMEOUT` heißt „noch nicht fertig", nicht „nichts passiert".
+**Rule of thumb.** `LIBUSB_ERROR_TIMEOUT` means "not finished yet", not "nothing happened".
 
 ---
 
-## 4. Zugriff verweigert statt nichtssagender Zahl
+## 4. Access denied instead of a meaningless number
 
-**Symptom.** Die Switch wird erkannt (die Statusanzeige zeigt „Switch verbunden"), aber beim Start der Übertragung kommt ein Fehler mit dem Code `-3`.
+**Symptom.** The Switch is detected (the status pill shows "Switch verbunden"), but starting the transfer produces an error with code `-3`.
 
-**Ursache.** `libusb_claim_interface` scheitert mit `LIBUSB_ERROR_ACCESS`. Die üblichen Gründe auf macOS: Die App-Sandbox ist wieder eingeschaltet, ein anderer Prozess hält das Interface (ein zweiter Installer, das alte `usb_install.py`), oder die Signatur passt nicht zu den erteilten Rechten.
+**Cause.** `libusb_claim_interface` fails with `LIBUSB_ERROR_ACCESS`. The usual reasons on macOS: the App Sandbox has been switched back on, another process holds the interface (a second installer, the old `usb_install.py`), or the signature does not match the granted entitlements.
 
-**Lösung.** Der Code bekommt einen eigenen Fehlerfall statt einer nackten Zahl — an allen drei Stellen, an denen er auftreten kann (`claim_interface`, Lesen, Schreiben):
+**Fix.** The code gets its own error case instead of a bare number — in all three places where it can occur (`claim_interface`, reading, writing):
 
 ```swift
 if claimResult == Self.errorAccess { throw InstallError.accessDenied }
 ```
 
-`InstallError.accessDenied` trägt einen deutschen Klartext, der in der Fußnote der Aktionsleiste und im Protokoll landet. Zur Build-Seite des Problems siehe [[operations/build-configuration]].
+`InstallError.accessDenied` carries a German plain-text message that ends up in the footnote of the action bar and in the log. For the build side of the problem see [[operations/build-configuration]].
 
 ---
 
-## 5. Oberfläche bleibt hängen, wenn die Sitzung ohne Abschlussmeldung endet
+## 5. The UI hangs when the session ends without a completion message
 
-**Symptom.** Sehr selten und schwer reproduzierbar: Der Übertragungsablauf endet, ohne dass eines der Abschlussereignisse (`finished`, `cancelled`, `failed`) bei der Oberfläche ankommt. Der Zustand bleibt auf „läuft".
+**Symptom.** Very rare and hard to reproduce: the transfer flow ends without any of the completion events (`finished`, `cancelled`, `failed`) reaching the UI. The state stays on "running".
 
-**Ursache.** Alle Rückmeldungen laufen durch einen `AsyncStream`. Die Sitzung schreibt hinein, ein `Task { @MainActor }` liest heraus. Endet der Strom, ohne dass vorher ein Abschlussereignis geschrieben wurde, verlässt die `for await`-Schleife einfach ihren Rumpf — und niemand setzt die Phase zurück.
+**Cause.** All feedback travels through an `AsyncStream`. The session writes into it, a `Task { @MainActor }` reads out of it. If the stream ends without a completion event having been written first, the `for await` loop simply falls out of its body — and nobody resets the phase.
 
-**Lösung.** Ein Rückfall hinter der Schleife:
+**Fix.** A fallback after the loop:
 
 ```swift
 eventTask = Task { @MainActor [weak self] in
     for await event in stream {
         self?.apply(event)
     }
-    // Der Strom ist zu Ende, ohne dass ein Abschlussereignis kam.
-    // Ohne diesen Rückfall bliebe die Oberfläche auf „läuft" stehen
-    // und „Abbrechen" aktiv, obwohl nichts mehr passiert.
+    // The stream ended without a completion event arriving.
+    // Without this fallback the UI would stay stuck on "running"
+    // with "Cancel" active even though nothing is happening.
     guard let self, self.isBusy else { return }
     self.progress = nil
     self.phase = .idle
@@ -145,46 +145,46 @@ eventTask = Task { @MainActor [weak self] in
 }
 ```
 
-Die `isBusy`-Prüfung sorgt dafür, dass der Rückfall im Normalfall nichts tut — dort ist die Phase bereits `.finished`, `.idle` oder `.failed`.
+The `isBusy` check makes sure the fallback does nothing in the normal case — there the phase is already `.finished`, `.idle` or `.failed`.
 
-**Warum überhaupt ein Strom und nicht viele kleine Tasks?** Der Kommentar über `SessionEvent` sagt es: Einzelne unstrukturierte `Task { @MainActor }`-Aufrufe garantieren **keine Reihenfolge**. Fortschrittswerte und Protokollzeilen könnten vertauscht ankommen, und im schlimmsten Fall käme das Abschlussereignis vor dem letzten Fortschrittswert. Der Strom ist genau ein geordneter Kanal.
+**Why a stream at all and not many small tasks?** The comment above `SessionEvent` says it: individual unstructured `Task { @MainActor }` calls guarantee **no ordering**. Progress values and log lines could arrive out of order, and in the worst case the completion event would arrive before the last progress value. The stream is exactly one ordered channel.
 
-Aus demselben Grund zählt ein separater `DoneCounter` (mit `NSLock`) die fertigen Dateien **auf dem Sitzungs-Thread**, bevor das Ereignis abgeschickt wird — sonst hinge das Endergebnis „x Titel übertragen" von der Zustellreihenfolge ab.
+For the same reason a separate `DoneCounter` (with an `NSLock`) counts the finished files **on the session thread** before the event is sent off — otherwise the final "x titles transferred" result would depend on the delivery order.
 
 ---
 
-## 6. „Nintendo Nintendo Switch" in der Verbindungsmeldung
+## 6. "Nintendo Nintendo Switch" in the connection message
 
-**Symptom.** Das Protokoll meldete `Verbunden: Nintendo Nintendo Switch`.
+**Symptom.** The log reported `Verbunden: Nintendo Nintendo Switch`.
 
-**Ursache.** Die Meldung setzte Hersteller und Produkt zusammen. Der Produkt-String-Deskriptor der Konsole enthält den Herstellernamen aber bereits — und derselbe Effekt tritt auch bei den Rückfallwerten in `USBTransport.stringDescriptor` auf (`"Nintendo"` und `"Nintendo Switch"`).
+**Cause.** The message concatenated manufacturer and product. But the console's product string descriptor already contains the manufacturer name — and the same effect occurs with the fallback values in `USBTransport.stringDescriptor` (`"Nintendo"` and `"Nintendo Switch"`).
 
-**Lösung.** Nur noch `product` verwenden, mit Begründung im Code, damit es niemand „repariert":
+**Fix.** Use only `product`, with the reasoning in the code so that nobody "fixes" it back:
 
 ```swift
 case .device(let info):
     deviceSummary = "\(info.product) · \(info.serial)"
     phase = .transferring
-    // info.product enthält bereits „Nintendo Switch" — den Hersteller
-    // davorzusetzen ergäbe „Nintendo Nintendo Switch".
+    // info.product already contains "Nintendo Switch" — prefixing the
+    // manufacturer would produce "Nintendo Nintendo Switch".
     appendLog("Verbunden: \(info.product) (Seriennummer \(info.serial))")
 ```
 
-`DeviceInfo.manufacturer` wird weiterhin ermittelt, aber nicht angezeigt.
+`DeviceInfo.manufacturer` is still determined, just not displayed.
 
 ---
 
-## 7. Fenster startet in der falschen Größe
+## 7. The window starts at the wrong size
 
-**Symptom.** Beim Start ist das Fenster deutlich zu groß — mit viel Leerraum unter der leeren Ablagefläche. Die Größe entsprach dem Zustand beim letzten Beenden, typischerweise mit gefüllter Warteschlange und ausgeklapptem Protokoll.
+**Symptom.** At launch the window is far too large — with a lot of empty space below the empty drop zone. The size matched the state at the last quit, typically with a filled queue and an expanded log.
 
-**Ursache.** AppKit stellt den zuletzt gesicherten Fensterrahmen automatisch wieder her. Die Fenstergröße ist hier aber eine **Funktion des Inhalts** — beim Start ist der Inhalt immer der leere Zustand.
+**Cause.** AppKit automatically restores the last saved window frame. Here, though, the window size is a **function of the content** — and at launch the content is always the empty state.
 
-**Lösung.** Persistenz abschalten und einmal verzögert an den Inhalt anpassen:
+**Fix.** Switch persistence off and fit to the content once, with a delay:
 
 ```swift
-// AppKit stellt beim Start den zuletzt gesicherten Rahmen wieder her —
-// Persistenz abschalten und einmal an den Inhalt anpassen.
+// At launch AppKit restores the last saved frame — switch persistence
+// off and fit to the content once.
 window.setFrameAutosaveName("")
 window.isRestorable = false
 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
@@ -192,64 +192,64 @@ DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
 }
 ```
 
-Die Verzögerung ist nötig, weil SwiftUI zum Zeitpunkt von `viewDidMoveToWindow` noch keine belastbare Idealgröße gemessen hat. Zwei benachbarte Fallstricke aus derselben Datei sind in [[ui/window-and-views]] beschrieben: `fittingSize` kann bei `NSHostingView` kommentarlos Null liefern (deshalb zuerst `intrinsicContentSize`), und der Fensterursprung muss auf die obere linke Ecke umgerechnet werden, weil macOS-Koordinaten unten links beginnen.
+The delay is necessary because at the time of `viewDidMoveToWindow` SwiftUI has not yet measured a reliable ideal size. Two neighbouring pitfalls from the same file are described in [[ui/window-and-views]]: with `NSHostingView`, `fittingSize` can silently return zero (hence `intrinsicContentSize` first), and the window origin has to be recomputed against the top left corner, because macOS coordinates start at the bottom left.
 
 ---
 
-## 8. Abbruch wirkt nicht sofort
+## 8. Cancellation does not take effect immediately
 
-**Symptom.** „Abbrechen" wird gedrückt, die Übertragung läuft aber noch kurz weiter.
+**Symptom.** "Cancel" is pressed but the transfer keeps running for a moment.
 
-**Erklärung, kein Fehler.** Der Abbruch ist ein Flag, das der USB-Thread abfragt — er wird nicht unterbrochen. Abgefragt wird an drei Stellen:
+**Explanation, not a bug.** Cancellation is a flag that the USB thread polls — it is not interrupted. It is polled in three places:
 
-| Stelle | Takt |
+| Site | Cadence |
 |---|---|
-| Warteschleife in `open` | alle 250 ms (`usleep(250_000)`) |
-| Leseschleife | alle 500 ms (Lese-Timeout) |
-| Schreibschleife | je Block, spätestens nach 5 s (Schreib-Timeout) |
+| Wait loop in `open` | every 250 ms (`usleep(250_000)`) |
+| Read loop | every 500 ms (read timeout) |
+| Write loop | per block, at the latest after 5 s (write timeout) |
 
-Der schlechteste Fall ist also ein hängender Schreibblock. Genau deshalb ist das Schreib-Timeout **endlich**: Ohne es wäre die Sitzung unabbrechbar, sobald die Konsole mitten im Block stehen bleibt.
+The worst case is therefore a stalled write block. That is precisely why the write timeout is **finite**: without it the session would be uncancellable as soon as the console stalls in the middle of a block.
 
-Das Flag selbst ist eine kleine Klasse mit `NSLock`, keine Modell-Eigenschaft:
+The flag itself is a small class with an `NSLock`, not a model property:
 
 ```swift
-/// Abbruch-Flag mit atomarem Zugriff. Wird aus dem cancel-Closure der Sitzung
-/// gelesen — der darf niemals auf MainActor-Zustand warten, sonst blockiert
-/// der USB-Thread gegen den Hauptthread.
+/// Cancellation flag with atomic access. Read from the session's cancel
+/// closure — which must never wait on MainActor state, otherwise the USB
+/// thread blocks against the main thread.
 fileprivate nonisolated final class CancelFlag: @unchecked Sendable
 ```
 
-Ein Zugriff auf `@Observable`-Zustand aus dem `cancel`-Closure wäre die klassische Verklemmung: Der USB-Thread wartet auf den MainActor, der MainActor wartet auf die Oberfläche, die auf die Übertragung wartet. Siehe [[architecture/concurrency-and-cancellation]].
+Accessing `@Observable` state from the `cancel` closure would be the classic deadlock: the USB thread waits on the MainActor, the MainActor waits on the UI, which waits on the transfer. See [[architecture/concurrency-and-cancellation]].
 
 ---
 
-## 9. Gesamtfortschritt springt über eine gescheiterte Datei
+## 9. Overall progress jumps over a failed file
 
-**Symptom.** Ist eine Datei nicht lesbar, sprang der Gesamtbalken trotzdem um deren volle Größe weiter — die Anzeige lief der Wirklichkeit davon.
+**Symptom.** If a file was unreadable, the overall bar nevertheless advanced by its full size — the display ran ahead of reality.
 
-**Lösung.** `InstallSession.transferFile` liefert einen Wahrheitswert zurück, und nur ein `true` zählt:
+**Fix.** `InstallSession.transferFile` returns a boolean, and only a `true` counts:
 
 ```swift
-// Nur tatsächlich übertragene Bytes zählen, sonst springt der
-// Gesamtfortschritt über eine gescheiterte Datei hinweg.
+// Count only bytes actually transferred, otherwise the overall
+// progress jumps over a failed file.
 if transferred {
     completedBytes += items[index].byteCount
 }
 ```
 
-Zum Verhalten bei einem Dateifehler gehört außerdem (siehe [[protocol/install-session-flow]]): Es geht ein Fehlerpaket an die Switch, die Datei wird als `.failed` markiert — und die Kommandoschleife läuft weiter. Sphaira bricht daraufhin die Installation ab, schickt aber noch den Quit-Befehl, der regulär beantwortet wird. Die Sitzung endet also geordnet statt mit einem abrupten USB-Abriss.
+Part of the behaviour on a file error is also (see [[protocol/install-session-flow]]): an error packet goes to the Switch, the file is marked `.failed` — and the command loop keeps running. Sphaira then aborts the installation but still sends the quit command, which is answered normally. The session therefore ends in an orderly fashion instead of with an abrupt USB drop.
 
 ---
 
-## Schnelldiagnose
+## Quick diagnosis
 
-| Beobachtung | Erster Blick |
+| Observation | First place to look |
 |---|---|
-| Fortschritt sofort bei 100 % | Fall 1 — `ProgressTracker.record` |
-| „Läuft" nach dem Ende | Fall 2 — synchrones `close()` |
-| `badMagic` / `checksumMismatch` mitten im Lauf | Fall 3 — Teilbytes bei Timeout |
-| Fehlercode `-3` | Fall 4 — Sandbox oder zweiter Prozess |
-| Oberfläche hängt ohne Meldung | Fall 5 — Rückfall im `eventTask` |
-| Fenster zu groß beim Start | Fall 7 — Rahmenpersistenz |
-| Abbruch reagiert träge | Fall 8 — Flag-Takt, kein Fehler |
-| Balken läuft der Wirklichkeit davon | Fall 9 — gescheiterte Datei mitgezählt |
+| Progress at 100 % immediately | Case 1 — `ProgressTracker.record` |
+| "Running" after the end | Case 2 — synchronous `close()` |
+| `badMagic` / `checksumMismatch` mid-run | Case 3 — partial bytes on timeout |
+| Error code `-3` | Case 4 — sandbox or a second process |
+| UI hangs with no message | Case 5 — fallback in `eventTask` |
+| Window too large at launch | Case 7 — frame persistence |
+| Cancellation reacts sluggishly | Case 8 — flag cadence, not a bug |
+| Bar runs ahead of reality | Case 9 — failed file counted |
