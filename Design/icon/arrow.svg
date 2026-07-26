@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Pfeil — Ebenen-Asset für Icon Composer</title>
+  <desc>
+    Kräftiger Pfeil nach unten, freistehend auf transparentem Grund, 1024×1024.
+    Waagerecht mittig (x = 512), senkrecht von y = 210 bis y = 830.
+    Schaft 180 breit, Spitze 380 breit. Ecken leicht gerundet (r ≈ 20), damit die
+    Form unter der Glasoptik nicht scharfkantig wirkt.
+    Der Verlauf ist bewusst schwach — er gibt nur eine Richtung vor, die Tiefe
+    macht Icon Composer.
+  </desc>
+  <defs>
+    <linearGradient id="arrowFill" x1="0" y1="0" x2="0" y2="1"
+                    gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#D2E7FF"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#arrowFill)" stroke="url(#arrowFill)" stroke-width="40"
+        stroke-linejoin="round" stroke-linecap="round"
+        d="M 442 230
+           L 582 230
+           L 582 560
+           L 662 560
+           L 512 790
+           L 362 560
+           L 442 560 Z"/>
+</svg>
