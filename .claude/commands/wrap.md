@@ -49,3 +49,17 @@ Release wrap for Sphaira Connect: versioning, release notes, tests, wiki and com
    - Only commit if there are changes.
    - **Commit messages are written in ENGLISH.**
    - **The commit message contains no Claude or Anthropic signature whatsoever:** no `Co-Authored-By` trailer, no "Generated with" note, no mention in the subject or the body. The commit belongs to the user alone.
+
+## status.txt (Pflicht bei jedem Wrap)
+
+Bei JEDEM `/wrap` MUSS eine `status.txt` im Repo-Root geschrieben/überschrieben werden -
+**gitignored** (falls nicht vorhanden, `status.txt` in `.gitignore` aufnehmen; **nie
+committen**). Sie enthält immer den letzten Stand, damit die nächste Session/der nächste
+Mensch ohne Git-Archäologie weitermachen kann:
+
+- `Stand:` Datum + Version
+- `Zuletzt gemacht:` was dieser Wrap abgeschlossen hat
+- `Offen / Nächste Schritte:` was noch aussteht (TODOs, bewusst Ausgelassenes, WIP)
+
+Bei jedem Wrap überschreiben (nicht anhängen), sodass die Datei stets den aktuellen
+Zustand zeigt.
