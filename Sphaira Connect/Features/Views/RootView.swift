@@ -177,12 +177,17 @@ struct RootView: View {
             }
 
             if model.phase == .waitingForSwitch {
-                HStack(spacing: Spacing.sm) {
-                    ProgressView()
-                        .controlSize(.small)
-                    Text("Warte auf die Switch — dort die USB-Installation in Sphaira öffnen …")
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    HStack(spacing: Spacing.sm) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Warte auf die Switch — dort die USB-Installation in Sphaira öffnen …")
+                            .font(Fonts.helper)
+                            .foregroundStyle(.secondary)
+                    }
+                    Text("Nur Sphaira ≥ 1.0.0 — Awoo/Tinfoil-Installer funktionieren nicht (anderes USB-Protokoll).")
                         .font(Fonts.helper)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.tertiary)
                 }
                 .transition(.opacity)
             }

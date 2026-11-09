@@ -109,7 +109,7 @@ final class USBTransport: @unchecked Sendable {
         return DeviceInfo(
             manufacturer: stringDescriptor(index: descriptor.iManufacturer, fallback: "Nintendo"),
             product: stringDescriptor(index: descriptor.iProduct, fallback: "Nintendo Switch"),
-            serial: stringDescriptor(index: descriptor.iSerialNumber, fallback: String(localized: "unbekannt"))
+            serial: stringDescriptor(index: descriptor.iSerialNumber, fallback: "")
         )
     }
 

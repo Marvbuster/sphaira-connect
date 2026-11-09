@@ -13,11 +13,26 @@ nonisolated struct InstallItem: Identifiable, Equatable, Sendable {
         case failed(String)
     }
 
+    /// Result of the background dump check (see ContainerIntegrity). Runs
+    /// after the item is added; a corrupt item is withheld from the transfer.
+    enum Integrity: Equatable, Sendable {
+        case unchecked
+        /// Deep pass in progress, fraction 0…1.
+        case checking(Double)
+        case verified(ContainerIntegrity.Verdict)
+
+        var isCorrupt: Bool {
+            if case .verified(.corrupt) = self { return true }
+            return false
+        }
+    }
+
     let id: UUID
     let url: URL
     let displayName: String     // File name including extension — sent to the Switch as is
     let byteCount: Int64
     var state: State
+    var integrity: Integrity = .unchecked
 
     init(url: URL, byteCount: Int64) {
         self.id = UUID()

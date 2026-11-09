@@ -9,3 +9,6 @@ node_modules/
 
 # Arbeitsmaterial, nie ins Repo (kann Bildschirmfotos mit Privatem enthalten)
 _raw/
+
+# lokal, nicht versionieren
+status.txt

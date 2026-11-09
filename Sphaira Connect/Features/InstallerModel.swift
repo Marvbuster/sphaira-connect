@@ -82,6 +82,8 @@ final class InstallerModel {
     @ObservationIgnored private var cancelFlag: CancelFlag?
     @ObservationIgnored private var monitorTask: Task<Void, Never>?
     @ObservationIgnored private var eventTask: Task<Void, Never>?
+    @ObservationIgnored private var integrityTask: Task<Void, Never>?
+    @ObservationIgnored private var integrityCancel = CancelFlag()
 
     private static let maxLogLines = 500
 
@@ -90,7 +92,7 @@ final class InstallerModel {
     }
 
     var canStart: Bool {
-        !items.isEmpty && !isBusy
+        items.contains { !$0.integrity.isCorrupt } && !isBusy
     }
 
     var isBusy: Bool {
@@ -107,6 +109,69 @@ final class InstallerModel {
         guard !fresh.isEmpty else { return }
         items.append(contentsOf: fresh)
         appendLog(String(localized: "\(fresh.count) Datei(en) zur Warteschlange hinzugefügt."))
+        scheduleIntegrityChecks(for: fresh)
+    }
+
+    // MARK: - Integrity
+
+    /// Checks the freshly added files in the background, one after the other:
+    /// first the quick structural/hash pass, then — if that is clean — the deep
+    /// zero-run scan with progress. Batches queue up behind each other so two
+    /// drops never compete for the disk. Results arrive through one ordered
+    /// channel, like the session events.
+    private func scheduleIntegrityChecks(for fresh: [InstallItem]) {
+        let flag = integrityCancel
+        let targets = fresh.map { ($0.id, $0.url) }
+        let previous = integrityTask
+        integrityTask = Task { @MainActor [weak self] in
+            await previous?.value
+            let (stream, continuation) = AsyncStream.makeStream(
+                of: (UUID, InstallItem.Integrity).self,
+                bufferingPolicy: .unbounded
+            )
+            Task.detached(priority: .utility) {
+                defer { continuation.finish() }
+                for (id, url) in targets {
+                    if flag.isSet() { return }
+                    let quick = ContainerIntegrity.check(url: url, deep: false, cancel: { flag.isSet() })
+                    guard quick.verdict == .ok else {
+                        continuation.yield((id, .verified(quick.verdict)))
+                        continue
+                    }
+                    continuation.yield((id, .checking(0)))
+                    let deep = ContainerIntegrity.check(
+                        url: url,
+                        deep: true,
+                        cancel: { flag.isSet() },
+                        progress: { continuation.yield((id, .checking($0))) }
+                    )
+                    continuation.yield((id, .verified(deep.verdict)))
+                }
+            }
+            for await (id, integrity) in stream {
+                self?.applyIntegrity(id: id, integrity)
+            }
+        }
+    }
+
+    private func applyIntegrity(id: UUID, _ integrity: InstallItem.Integrity) {
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        items[index].integrity = integrity
+        let name = items[index].displayName
+        switch integrity {
+        case .verified(.corrupt(let reason)):
+            appendLog(String(localized: "Dump beschädigt — \(name): \(reason)"))
+        case .verified(.warning(let reason)):
+            appendLog(String(localized: "Dump-Warnung — \(name): \(reason)"))
+        default:
+            break
+        }
+    }
+
+    /// Stops running checks; the next batch starts with a fresh flag.
+    private func cancelIntegrityChecks() {
+        integrityCancel.set()
+        integrityCancel = CancelFlag()
     }
 
     func remove(_ item: InstallItem) {
@@ -116,6 +181,7 @@ final class InstallerModel {
 
     func clearAll() {
         guard !isBusy else { return }
+        cancelIntegrityChecks()
         items.removeAll()
         progress = nil
         if phase != .idle { phase = .idle }
@@ -125,19 +191,37 @@ final class InstallerModel {
 
     func start() {
         guard canStart else { return }
+        cancelIntegrityChecks()
 
+        // Corrupt dumps stay behind: the Switch would reject them after
+        // gigabytes of transfer (NcaBadMagic). The session sees only the
+        // healthy items; indexMap translates its indices back to the queue.
+        var sessionItems: [InstallItem] = []
+        var indexMap: [Int] = []
+        var withheld = 0
         for index in items.indices {
-            items[index].state = .queued
+            if case .verified(.corrupt(let reason)) = items[index].integrity {
+                items[index].state = .failed(String(localized: "nicht gesendet — Dump beschädigt: \(reason)"))
+                withheld += 1
+            } else {
+                items[index].state = .queued
+                indexMap.append(index)
+                sessionItems.append(items[index])
+            }
+        }
+        if withheld > 0 {
+            appendLog(String(localized: "\(withheld) Datei(en) wegen beschädigtem Dump nicht gesendet."))
         }
         progress = nil
         deviceSummary = nil
         phase = .waitingForSwitch
         appendLog(String(localized: "Warte auf die Switch — Sphaira auf der Konsole öffnen (USB-Installation)."))
+        appendLog(String(localized: "Hinweis: Nur Sphaira ab 1.0.0 spricht das USB-Protokoll von Sphaira Connect — Awoo, Tinfoil, NS-USBloader & Co. bleiben stumm."))
 
         let flag = CancelFlag()
         cancelFlag = flag
         let doneCounter = DoneCounter()
-        let session = InstallSession(items: items, transport: USBTransport())
+        let session = InstallSession(items: sessionItems, transport: USBTransport())
 
         let (stream, continuation) = AsyncStream.makeStream(
             of: SessionEvent.self,
@@ -170,7 +254,7 @@ final class InstallerModel {
                     onProgress: { continuation.yield(.progress($0)) },
                     onItemState: { index, state in
                         if state == .done { doneCounter.increment() }
-                        continuation.yield(.itemState(index: index, state: state))
+                        continuation.yield(.itemState(index: indexMap[index], state: state))
                     },
                     cancel: { flag.isSet() }
                 )
@@ -190,11 +274,22 @@ final class InstallerModel {
             appendLog(text)
 
         case .device(let info):
-            deviceSummary = "\(info.product) · \(info.serial)"
             phase = .transferring
             // info.product already contains "Nintendo Switch" — prefixing the
             // manufacturer would produce "Nintendo Nintendo Switch".
-            appendLog(String(localized: "Verbunden: \(info.product) (Seriennummer \(info.serial))"))
+            if let serial = DeviceSerial.display(info.serial) {
+                deviceSummary = "\(info.product) · \(serial)"
+                appendLog(String(localized: "Verbunden: \(info.product) (Seriennummer \(serial))"))
+            } else {
+                deviceSummary = info.product
+                appendLog(String(localized: "Verbunden: \(info.product)"))
+            }
+            // Sphaira reports the console's real serial. The libnx default
+            // descriptor means some other homebrew app owns the USB interface —
+            // it will never send an SPH0 packet, and we would wait forever.
+            if DeviceSerial.isPlaceholder(info.serial) {
+                appendLog(String(localized: "Die Konsole meldet sich mit der libnx-Standardkennung — dort läuft vermutlich Awoo, Tinfoil oder eine andere App statt Sphaira."))
+            }
 
         case .progress(let value):
             progress = value

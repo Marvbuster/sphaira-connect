@@ -1,6 +1,390 @@
 {
   "sourceLanguage" : "de",
   "strings" : {
+    "XCZ ist komprimiert — Prüfsummen nicht prüfbar" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "XCZ ist komprimiert — Prüfsummen nicht prüfbar"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "XCZ is compressed — checksums cannot be verified"
+          }
+        }
+      }
+    },
+    "Datei nicht lesbar" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datei nicht lesbar"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File not readable"
+          }
+        }
+      }
+    },
+    "Prüfung abgebrochen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prüfung abgebrochen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check cancelled"
+          }
+        }
+      }
+    },
+    "XCI mit vorangestellter Key Area (0x1000 Bytes) — Sphaira erwartet den Gamecard-Header bei 0x100" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "XCI mit vorangestellter Key Area (0x1000 Bytes) — Sphaira erwartet den Gamecard-Header bei 0x100"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "XCI with a prepended key area (0x1000 bytes) — Sphaira expects the gamecard header at 0x100"
+          }
+        }
+      }
+    },
+    "Unbekanntes Containerformat (weder PFS0 noch XCI)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unbekanntes Containerformat (weder PFS0 noch XCI)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unknown container format (neither PFS0 nor XCI)"
+          }
+        }
+      }
+    },
+    "PFS0-Verzeichnis ungültig (%lld Einträge)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PFS0-Verzeichnis ungültig (%lld Einträge)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PFS0 directory invalid (%lld entries)"
+          }
+        }
+      }
+    },
+    "PFS0-Verzeichnis reicht über das Dateiende hinaus" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PFS0-Verzeichnis reicht über das Dateiende hinaus"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PFS0 directory extends past the end of the file"
+          }
+        }
+      }
+    },
+    "Gamecard-Header verweist auf ein ungültiges Root-Verzeichnis" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gamecard-Header verweist auf ein ungültiges Root-Verzeichnis"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gamecard header points to an invalid root directory"
+          }
+        }
+      }
+    },
+    "Partition „%@“ liegt außerhalb der Datei" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Partition „%@“ liegt außerhalb der Datei"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Partition “%@” lies outside the file"
+          }
+        }
+      }
+    },
+    "HFS0-Kennung der Partition „%@“ fehlt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HFS0-Kennung der Partition „%@“ fehlt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HFS0 magic of partition “%@” missing"
+          }
+        }
+      }
+    },
+    "HFS0-Verzeichnis der Partition „%@“ ungültig (%lld Einträge)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HFS0-Verzeichnis der Partition „%@“ ungültig (%lld Einträge)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HFS0 directory of partition “%@” invalid (%lld entries)"
+          }
+        }
+      }
+    },
+    "HFS0-Verzeichnis der Partition „%@“ reicht über das Dateiende hinaus" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HFS0-Verzeichnis der Partition „%@“ reicht über das Dateiende hinaus"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HFS0 directory of partition “%@” extends past the end of the file"
+          }
+        }
+      }
+    },
+    "„%@“ endet hinter dem Dateiende — Dump unvollständig" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "„%@“ endet hinter dem Dateiende — Dump unvollständig"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” ends past the end of the file — dump incomplete"
+          }
+        }
+      }
+    },
+    "Prüfsumme von „%@“ stimmt nicht — Dump beschädigt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prüfsumme von „%@“ stimmt nicht — Dump beschädigt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checksum of “%@” does not match — dump damaged"
+          }
+        }
+      }
+    },
+    "NCA-Header von „%@“ ist leer — Dump beschädigt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NCA-Header von „%@“ ist leer — Dump beschädigt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NCA header of “%@” is blank — dump damaged"
+          }
+        }
+      }
+    },
+    "Nullblock von mindestens %@ in „%@“ — mögliche Dump-Lücke" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nullblock von mindestens %@ in „%@“ — mögliche Dump-Lücke"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zero block of at least %@ in “%@” — possible dump gap"
+          }
+        }
+      }
+    },
+    "Dump beschädigt — %@: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dump beschädigt — %@: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dump damaged — %@: %@"
+          }
+        }
+      }
+    },
+    "Dump-Warnung — %@: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dump-Warnung — %@: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dump warning — %@: %@"
+          }
+        }
+      }
+    },
+    "nicht gesendet — Dump beschädigt: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nicht gesendet — Dump beschädigt: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "not sent — dump damaged: %@"
+          }
+        }
+      }
+    },
+    "%lld Datei(en) wegen beschädigtem Dump nicht gesendet." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Datei(en) wegen beschädigtem Dump nicht gesendet."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld file(s) withheld because of a damaged dump."
+          }
+        }
+      }
+    },
+    "Prüfe Dump-Integrität …" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prüfe Dump-Integrität …"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking dump integrity …"
+          }
+        }
+      }
+    },
+    "Dump-Integrität geprüft: in Ordnung" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dump-Integrität geprüft: in Ordnung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dump integrity checked: fine"
+          }
+        }
+      }
+    },
+    "Dump beschädigt: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dump beschädigt: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dump damaged: %@"
+          }
+        }
+      }
+    },
+    "Dump-Warnung: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dump-Warnung: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dump warning: %@"
+          }
+        }
+      }
+    },
     ".bin hier ablegen oder zum Auswählen klicken" : {
       "localizations" : {
         "en" : {
@@ -434,6 +818,22 @@
         }
       }
     },
+    "Die Konsole meldet sich mit der libnx-Standardkennung — dort läuft vermutlich Awoo, Tinfoil oder eine andere App statt Sphaira." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Konsole meldet sich mit der libnx-Standardkennung — dort läuft vermutlich Awoo, Tinfoil oder eine andere App statt Sphaira."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The console identifies with the libnx default descriptor — it is probably running Awoo, Tinfoil or another app instead of Sphaira."
+          }
+        }
+      }
+    },
     "Die Switch antwortete auf den Exploit-Request (%d Bytes). Das Gerät ist möglicherweise gepatcht." : {
       "localizations" : {
         "en" : {
@@ -680,6 +1080,22 @@
         }
       }
     },
+    "Hinweis: Nur Sphaira ab 1.0.0 spricht das USB-Protokoll von Sphaira Connect — Awoo, Tinfoil, NS-USBloader & Co. bleiben stumm." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hinweis: Nur Sphaira ab 1.0.0 spricht das USB-Protokoll von Sphaira Connect — Awoo, Tinfoil, NS-USBloader & Co. bleiben stumm."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Note: only Sphaira 1.0.0 or later speaks Sphaira Connect's USB protocol — Awoo, Tinfoil, NS-USBloader and the like stay silent."
+          }
+        }
+      }
+    },
     "Hinzufügen" : {
       "localizations" : {
         "de" : {
@@ -897,6 +1313,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Drop NSP, XCI, NSZ, or XCZ here"
+          }
+        }
+      }
+    },
+    "Nur Sphaira ≥ 1.0.0 — Awoo/Tinfoil-Installer funktionieren nicht (anderes USB-Protokoll)." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nur Sphaira ≥ 1.0.0 — Awoo/Tinfoil-Installer funktionieren nicht (anderes USB-Protokoll)."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sphaira ≥ 1.0.0 only — Awoo/Tinfoil installers do not work (different USB protocol)."
           }
         }
       }
@@ -1659,23 +2091,6 @@
         }
       }
     },
-    "unbekannt" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "unbekannt"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "unknown"
-          }
-        }
-      }
-    },
     "Unerwarteter Befehl von der Switch: %u." : {
       "localizations" : {
         "de" : {
@@ -1788,6 +2203,22 @@
     },
     "Verbleibende Zeit: %@" : {
 
+    },
+    "Verbunden: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbunden: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connected: %@"
+          }
+        }
+      }
     },
     "Verbunden: %@ (Seriennummer %@)" : {
       "localizations" : {

@@ -75,10 +75,16 @@ private struct QueueRow: View {
                         .font(.caption2)
                         .foregroundStyle(Colors.warning)
                         .lineLimit(1)
+                } else if item.state == .queued {
+                    integritySubline
                 }
             }
 
             Spacer(minLength: Spacing.md)
+
+            if item.state == .queued {
+                integrityBadge
+            }
 
             Text(ByteFormat.size(item.byteCount))
                 .font(.system(.caption, design: .monospaced))
@@ -103,8 +109,61 @@ private struct QueueRow: View {
         )
         .onHover { hovered = $0 }
         .animation(.easeInOut(duration: 0.2), value: item.state)
+        .animation(.easeInOut(duration: 0.2), value: item.integrity)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(item.displayName), \(ByteFormat.size(item.byteCount)), \(stateDescription)")
+    }
+
+    /// Second line while queued: deep-check progress or the verdict's reason.
+    @ViewBuilder
+    private var integritySubline: some View {
+        switch item.integrity {
+        case .checking(let fraction):
+            HStack(spacing: Spacing.xs) {
+                Text("Prüfe Dump-Integrität …")
+                Text(fraction, format: .percent.precision(.fractionLength(0)))
+                    .monospacedDigit()
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+        case .verified(.corrupt(let reason)):
+            Text(reason)
+                .font(.caption2)
+                .foregroundStyle(Colors.danger)
+                .lineLimit(1)
+        case .verified(.warning(let reason)):
+            Text(reason)
+                .font(.caption2)
+                .foregroundStyle(Colors.warning)
+                .lineLimit(1)
+        case .unchecked, .verified(.ok), .verified(.notVerifiable):
+            EmptyView()
+        }
+    }
+
+    /// Shield next to the size: the dump check's verdict at a glance.
+    @ViewBuilder
+    private var integrityBadge: some View {
+        switch item.integrity {
+        case .verified(.ok):
+            Image(systemName: "checkmark.shield")
+                .foregroundStyle(Colors.success)
+                .help("Dump-Integrität geprüft: in Ordnung")
+        case .verified(.warning(let reason)):
+            Image(systemName: "exclamationmark.shield")
+                .foregroundStyle(Colors.warning)
+                .help(reason)
+        case .verified(.corrupt(let reason)):
+            Image(systemName: "xmark.shield.fill")
+                .foregroundStyle(Colors.danger)
+                .help(reason)
+        case .verified(.notVerifiable(let reason)):
+            Image(systemName: "shield.slash")
+                .foregroundStyle(.tertiary)
+                .help(reason)
+        case .unchecked, .checking:
+            EmptyView()
+        }
     }
 
     @ViewBuilder
@@ -130,7 +189,12 @@ private struct QueueRow: View {
 
     private var stateDescription: String {
         switch item.state {
-        case .queued: String(localized: "wartet")
+        case .queued:
+            switch item.integrity {
+            case .verified(.corrupt(let reason)): String(localized: "Dump beschädigt: \(reason)")
+            case .verified(.warning(let reason)): String(localized: "Dump-Warnung: \(reason)")
+            default: String(localized: "wartet")
+            }
         case .transferring: String(localized: "wird übertragen")
         case .done: String(localized: "fertig")
         case .skipped(let reason): String(localized: "übersprungen: \(reason)")

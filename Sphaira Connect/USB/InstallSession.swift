@@ -23,12 +23,6 @@ nonisolated struct TransferProgress: Equatable, Sendable {
 }
 
 final class InstallSession: @unchecked Sendable {
-    /// NSP/XCI containers pad their last entry to an alignment boundary that
-    /// the Switch never explicitly requests — a handful of trailing bytes it
-    /// already knows are not content. Within this margin, a transfer still
-    /// counts as complete instead of being reported as skipped.
-    private nonisolated static let completionTolerance: Int64 = 4096
-
     private nonisolated let items: [InstallItem]
     private nonisolated let transport: USBTransport
 
@@ -152,7 +146,7 @@ final class InstallSession: @unchecked Sendable {
         )
 
         // `sentOverride` reports the file as fully sent once it counts as complete
-        // (see completionTolerance below) — otherwise the last progress snapshot of
+        // (see TransferCompletion below) — otherwise the last progress snapshot of
         // a batch stays a few bytes short of overallTotal forever, and the summary
         // view keeps showing "incomplete" even though every file actually succeeded.
         func emitProgress(force: Bool, sentOverride: Int64? = nil) {
@@ -205,9 +199,10 @@ final class InstallSession: @unchecked Sendable {
         // Sphaira also closes the file after a few kilobytes when it skips the
         // title (already installed) or rejects it (invalid header). The two cases
         // are indistinguishable on the wire — so we report the observed facts
-        // rather than a guessed cause. A shortfall within completionTolerance is
-        // container padding, not a skip: the install still succeeded.
-        let succeeded = tracker.sentBytes >= Int64(size) - Self.completionTolerance
+        // rather than a guessed cause. A small shortfall is container padding
+        // and metadata entries Sphaira never reads, not a skip — the rule lives
+        // in TransferCompletion.
+        let succeeded = TransferCompletion.isComplete(sentBytes: tracker.sentBytes, totalBytes: Int64(size))
         emitProgress(force: true, sentOverride: succeeded ? Int64(size) : nil)
 
         guard succeeded else {
